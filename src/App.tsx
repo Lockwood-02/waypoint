@@ -3,6 +3,8 @@ import type { User } from '@supabase/supabase-js'
 import { signIn, signOut, signUp } from './features/auth/authService'
 import {
   ensureProfile,
+  getProfileShopPurchases,
+  purchaseProfileShopItem,
   updateProfileCosmetics,
   uploadProfileAvatar,
   type Profile,
@@ -143,6 +145,7 @@ function App() {
   const [isPointShopOpen, setIsPointShopOpen] = useState(false)
   const [profileActionMessage, setProfileActionMessage] = useState('')
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+  const [ownedShopItemIds, setOwnedShopItemIds] = useState<string[]>([])
 
   function clearSignedInState() {
     setProfile(null)
@@ -161,6 +164,7 @@ function App() {
     setIsPointShopOpen(false)
     setProfileActionMessage('')
     setIsUpdatingProfile(false)
+    setOwnedShopItemIds([])
   }
 
   useEffect(() => {
@@ -253,6 +257,30 @@ function App() {
     }
 
     loadTaskTags()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadShopPurchases() {
+      if (!user) {
+        return
+      }
+
+      const { data } = await getProfileShopPurchases(user.id)
+
+      if (!isMounted) {
+        return
+      }
+
+      setOwnedShopItemIds(data?.map((purchase) => purchase.item_id) ?? [])
+    }
+
+    loadShopPurchases()
 
     return () => {
       isMounted = false
@@ -369,7 +397,13 @@ function App() {
       return
     }
 
-    if (profile.total_points < item.cost) {
+    const isOwned =
+      ownedShopItemIds.includes(item.id) ||
+      profile.selected_avatar_frame === item.value ||
+      profile.selected_name_color === item.value
+    const nextPoints = isOwned ? profile.total_points : profile.total_points - item.cost
+
+    if (!isOwned && profile.total_points < item.cost) {
       setProfileActionMessage('Not enough points for that reward yet.')
       return
     }
@@ -377,7 +411,19 @@ function App() {
     setIsUpdatingProfile(true)
     setProfileActionMessage('')
 
-    const nextPoints = profile.total_points - item.cost
+    if (!isOwned) {
+      const { error: purchaseError } = await purchaseProfileShopItem(
+        user.id,
+        item.id,
+      )
+
+      if (purchaseError) {
+        setProfileActionMessage(purchaseError.message)
+        setIsUpdatingProfile(false)
+        return
+      }
+    }
+
     const { data, error } = await updateProfileCosmetics(user.id, {
       total_points: nextPoints,
       selected_avatar_frame:
@@ -396,7 +442,14 @@ function App() {
 
     if (data) {
       setProfile(data as Profile)
-      setProfileActionMessage(`${item.label} equipped.`)
+      setOwnedShopItemIds((currentItemIds) =>
+        currentItemIds.includes(item.id)
+          ? currentItemIds
+          : [...currentItemIds, item.id],
+      )
+      setProfileActionMessage(
+        isOwned ? `${item.label} equipped.` : `${item.label} purchased.`,
+      )
     }
 
     setIsUpdatingProfile(false)
@@ -1158,6 +1211,10 @@ function App() {
                       profile?.selected_avatar_frame === item.value) ||
                     (item.type === 'name_color' &&
                       profile?.selected_name_color === item.value)
+                  const isOwned =
+                    ownedShopItemIds.includes(item.id) ||
+                    profile?.selected_avatar_frame === item.value ||
+                    profile?.selected_name_color === item.value
                   const canAfford = (profile?.total_points ?? 0) >= item.cost
 
                   return (
@@ -1175,18 +1232,26 @@ function App() {
                           </p>
                         </div>
                         <span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">
-                          {item.cost} pts
+                          {isOwned ? 'Owned' : `${item.cost} pts`}
                         </span>
                       </div>
                       <button
                         type="button"
-                        disabled={isUpdatingProfile || isEquipped || !canAfford}
+                        disabled={
+                          isUpdatingProfile ||
+                          isEquipped ||
+                          (!isOwned && !canAfford)
+                        }
                         onClick={() => handleBuyShopItem(item)}
                         className="mt-4 w-full rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isEquipped
                           ? 'Equipped'
-                          : canAfford
+                          : isOwned
+                            ? isUpdatingProfile
+                              ? 'Equipping...'
+                              : 'Equip'
+                            : canAfford
                             ? isUpdatingProfile
                               ? 'Buying...'
                               : 'Buy and equip'

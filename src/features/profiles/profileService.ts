@@ -12,6 +12,12 @@ export type Profile = {
   updated_at: string
 }
 
+export type ProfileShopPurchase = {
+  user_id: string
+  item_id: string
+  purchased_at: string
+}
+
 export async function getProfile(userId: string) {
   return supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
 }
@@ -77,7 +83,7 @@ export async function uploadProfileAvatar(userId: string, file: File) {
 export async function updateProfileCosmetics(
   userId: string,
   updates: {
-    total_points: number
+    total_points?: number
     selected_avatar_frame?: string | null
     selected_name_color?: string | null
   },
@@ -89,6 +95,29 @@ export async function updateProfileCosmetics(
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId)
+    .select()
+    .single()
+}
+
+export async function getProfileShopPurchases(userId: string) {
+  const response = await supabase
+    .from('profile_shop_purchases')
+    .select('*')
+    .eq('user_id', userId)
+
+  return {
+    ...response,
+    data: response.data ? (response.data as ProfileShopPurchase[]) : null,
+  }
+}
+
+export async function purchaseProfileShopItem(userId: string, itemId: string) {
+  return supabase
+    .from('profile_shop_purchases')
+    .insert({
+      user_id: userId,
+      item_id: itemId,
+    })
     .select()
     .single()
 }
