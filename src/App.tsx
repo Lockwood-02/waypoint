@@ -7,6 +7,7 @@ import {
   createTask,
   getTask,
   getTasks,
+  updateTask,
   type Task,
 } from './features/tasks/taskService'
 import { supabase } from './lib/supabaseClient'
@@ -53,6 +54,8 @@ function App() {
   const [tasksError, setTasksError] = useState('')
   const [isLoadingTasks, setIsLoadingTasks] = useState(false)
   const [isCreatingTask, setIsCreatingTask] = useState(false)
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [taskActionMessage, setTaskActionMessage] = useState('')
   const [isUpdatingTask, setIsUpdatingTask] = useState(false)
@@ -62,6 +65,8 @@ function App() {
     setProfileError('')
     setTasks([])
     setTasksError('')
+    setEditingTask(null)
+    setIsCreateTaskModalOpen(false)
     setSelectedTask(null)
     setTaskActionMessage('')
   }
@@ -200,18 +205,55 @@ function App() {
     setFormState(initialAuthState)
   }
 
+  function openCreateTaskModal() {
+    setEditingTask(null)
+    setTaskForm(initialTaskFormState)
+    setTaskActionMessage('')
+    setIsCreateTaskModalOpen(true)
+  }
+
+  function closeCreateTaskModal() {
+    if (isCreatingTask) {
+      return
+    }
+
+    setIsCreateTaskModalOpen(false)
+    setEditingTask(null)
+    setTaskForm(initialTaskFormState)
+    setTaskActionMessage('')
+  }
+
+  function openEditTaskModal(task: Task) {
+    setEditingTask(task)
+    setTaskForm({
+      title: task.title,
+      description: task.description ?? '',
+      points: String(task.points),
+      steps: task.task_steps.length
+        ? task.task_steps.map((step) => step.title)
+        : [''],
+    })
+    setTaskActionMessage('')
+    setSelectedTask(null)
+    setIsCreateTaskModalOpen(true)
+  }
+
   async function handleCreateTask(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsCreatingTask(true)
     setTaskActionMessage('')
 
     const points = Number.parseInt(taskForm.points, 10)
-    const { data, error } = await createTask({
+    const taskInput = {
       title: taskForm.title.trim(),
       description: taskForm.description.trim(),
       points: Number.isFinite(points) && points > 0 ? points : 10,
       steps: taskForm.steps,
-    })
+    }
+
+    const { data, error } = editingTask
+      ? await updateTask(editingTask.id, taskInput)
+      : await createTask(taskInput)
 
     if (error) {
       setTaskActionMessage(error.message)
@@ -220,9 +262,15 @@ function App() {
     }
 
     if (data) {
-      setTasks((currentTasks) => [data, ...currentTasks])
+      setTasks((currentTasks) =>
+        editingTask
+          ? currentTasks.map((task) => (task.id === data.id ? data : task))
+          : [data, ...currentTasks],
+      )
+      setEditingTask(null)
       setTaskForm(initialTaskFormState)
-      setTaskActionMessage('Task created.')
+      setTaskActionMessage(editingTask ? 'Task saved.' : 'Task created.')
+      setIsCreateTaskModalOpen(false)
     }
 
     setIsCreatingTask(false)
@@ -393,118 +441,9 @@ function App() {
                   ))}
                 </dl>
               </section>
-
-              <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
-                <h2 className="text-lg font-semibold">Create a task</h2>
-                <form className="mt-5 space-y-4" onSubmit={handleCreateTask}>
-                  <label className="block">
-                    <span className="text-sm font-medium text-slate-200">
-                      Title
-                    </span>
-                    <input
-                      required
-                      value={taskForm.title}
-                      onChange={(event) =>
-                        setTaskForm((current) => ({
-                          ...current,
-                          title: event.target.value,
-                        }))
-                      }
-                      className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
-                      placeholder="Clean the kitchen"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-sm font-medium text-slate-200">
-                      Description
-                    </span>
-                    <textarea
-                      value={taskForm.description}
-                      onChange={(event) =>
-                        setTaskForm((current) => ({
-                          ...current,
-                          description: event.target.value,
-                        }))
-                      }
-                      className="mt-2 min-h-28 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
-                      placeholder="Add the main task details here."
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="text-sm font-medium text-slate-200">
-                      Points
-                    </span>
-                    <input
-                      type="number"
-                      min="1"
-                      required
-                      value={taskForm.points}
-                      onChange={(event) =>
-                        setTaskForm((current) => ({
-                          ...current,
-                          points: event.target.value,
-                        }))
-                      }
-                      className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
-                    />
-                  </label>
-
-                  <div>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-slate-200">
-                        Checklist steps
-                      </p>
-                      <button
-                        type="button"
-                        onClick={addStepDraft}
-                        className="rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300"
-                      >
-                        Add step
-                      </button>
-                    </div>
-                    <div className="mt-2 space-y-2">
-                      {taskForm.steps.map((step, index) => (
-                        <div key={index} className="flex gap-2">
-                          <input
-                            value={step}
-                            onChange={(event) =>
-                              updateStepDraft(index, event.target.value)
-                            }
-                            className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
-                            placeholder={`Step ${index + 1}`}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeStepDraft(index)}
-                            className="rounded-md border border-white/15 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-rose-300 hover:text-rose-100"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {taskActionMessage ? (
-                    <p className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
-                      {taskActionMessage}
-                    </p>
-                  ) : null}
-
-                  <button
-                    type="submit"
-                    disabled={isCreatingTask}
-                    className="w-full rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
-                  >
-                    {isCreatingTask ? 'Creating...' : 'Create task'}
-                  </button>
-                </form>
-              </section>
             </aside>
 
-            <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
+            <section className="flex max-h-[36rem] min-h-0 flex-col rounded-lg border border-white/10 bg-white/[0.06] p-6 lg:max-h-[calc(100vh-12rem)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold">Tasks</h2>
@@ -512,13 +451,22 @@ function App() {
                     Open a task to view details and check off steps.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={refreshTasks}
-                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
-                >
-                  Refresh
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={openCreateTaskModal}
+                    className="rounded-md bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+                  >
+                    New task
+                  </button>
+                  <button
+                    type="button"
+                    onClick={refreshTasks}
+                    className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               {tasksError ? (
@@ -527,7 +475,7 @@ function App() {
                 </p>
               ) : null}
 
-              <div className="mt-5 space-y-3">
+              <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {isLoadingTasks ? (
                   <p className="text-sm text-slate-300">Loading tasks...</p>
                 ) : null}
@@ -583,6 +531,159 @@ function App() {
           </div>
         </section>
 
+        {isCreateTaskModalOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="task-form-modal-title"
+          >
+            <section className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                    {editingTask ? 'Edit task' : 'New task'}
+                  </p>
+                  <h2
+                    id="task-form-modal-title"
+                    className="mt-2 text-2xl font-bold"
+                  >
+                    {editingTask ? 'Save task details' : 'Create a task'}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCreateTaskModal}
+                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200"
+                >
+                  Close
+                </button>
+              </div>
+
+              <form className="mt-6 space-y-4" onSubmit={handleCreateTask}>
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-200">
+                    Title
+                  </span>
+                  <input
+                    required
+                    value={taskForm.title}
+                    onChange={(event) =>
+                      setTaskForm((current) => ({
+                        ...current,
+                        title: event.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                    placeholder="Clean the kitchen"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-200">
+                    Description
+                  </span>
+                  <textarea
+                    value={taskForm.description}
+                    onChange={(event) =>
+                      setTaskForm((current) => ({
+                        ...current,
+                        description: event.target.value,
+                      }))
+                    }
+                    className="mt-2 min-h-28 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                    placeholder="Add the main task details here."
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-200">
+                    Points
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={taskForm.points}
+                    onChange={(event) =>
+                      setTaskForm((current) => ({
+                        ...current,
+                        points: event.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                  />
+                </label>
+
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-slate-200">
+                      Checklist steps
+                    </p>
+                    <button
+                      type="button"
+                      onClick={addStepDraft}
+                      className="rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300"
+                    >
+                      Add step
+                    </button>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {taskForm.steps.map((step, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          value={step}
+                          onChange={(event) =>
+                            updateStepDraft(index, event.target.value)
+                          }
+                          className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                          placeholder={`Step ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStepDraft(index)}
+                          className="rounded-md border border-white/15 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-rose-300 hover:text-rose-100"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {taskActionMessage ? (
+                  <p className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+                    {taskActionMessage}
+                  </p>
+                ) : null}
+
+                <div className="flex flex-wrap justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeCreateTaskModal}
+                    className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingTask}
+                    className="rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isCreatingTask
+                      ? editingTask
+                        ? 'Saving...'
+                        : 'Creating...'
+                      : editingTask
+                        ? 'Save task'
+                        : 'Create task'}
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        ) : null}
+
         {selectedTask ? (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8"
@@ -600,13 +701,22 @@ function App() {
                     {selectedTask.title}
                   </h2>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedTask(null)}
-                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200"
-                >
-                  Close
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditTaskModal(selectedTask)}
+                    className="rounded-md bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTask(null)}
+                    className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
 
               <div className="mt-5 flex flex-wrap gap-3">

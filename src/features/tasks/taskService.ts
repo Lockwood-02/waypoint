@@ -38,6 +38,8 @@ export type CreateTaskInput = {
   steps: string[]
 }
 
+export type UpdateTaskInput = CreateTaskInput
+
 export async function getTasks() {
   const response = await supabase
     .from('tasks')
@@ -134,6 +136,74 @@ export async function getTask(taskId: string) {
   }
 
   return { ...response, data: null }
+}
+
+export async function updateTask(taskId: string, input: UpdateTaskInput) {
+  const updatedAt = new Date().toISOString()
+  const existingStepsResponse = await supabase
+    .from('task_steps')
+    .select('title, is_completed, position')
+    .eq('task_id', taskId)
+
+  if (existingStepsResponse.error) {
+    return { data: null, error: existingStepsResponse.error }
+  }
+
+  const existingSteps = [...(existingStepsResponse.data ?? [])].sort(
+    (first, second) => first.position - second.position,
+  )
+
+  const taskResponse = await supabase
+    .from('tasks')
+    .update({
+      title: input.title,
+      description: input.description ?? '',
+      points: input.points,
+      updated_at: updatedAt,
+    })
+    .eq('id', taskId)
+    .select()
+    .single()
+
+  if (taskResponse.error || !taskResponse.data) {
+    return { data: null, error: taskResponse.error }
+  }
+
+  const deleteResponse = await supabase
+    .from('task_steps')
+    .delete()
+    .eq('task_id', taskId)
+
+  if (deleteResponse.error) {
+    return { data: null, error: deleteResponse.error }
+  }
+
+  const stepRows = input.steps
+    .map((title) => title.trim())
+    .filter(Boolean)
+    .map((title, position) => {
+      const matchingStep =
+        existingSteps[position]?.title === title
+          ? existingSteps[position]
+          : existingSteps.find((step) => step.title === title)
+
+      return {
+        task_id: taskId,
+        title,
+        position,
+        is_completed: matchingStep?.is_completed ?? false,
+      }
+    })
+
+  if (stepRows.length) {
+    const stepsResponse = await supabase.from('task_steps').insert(stepRows)
+
+    if (stepsResponse.error) {
+      return { data: null, error: stepsResponse.error }
+    }
+  }
+
+  return getTask(taskId)
 }
 
 export async function updateTaskStepCompletion(
