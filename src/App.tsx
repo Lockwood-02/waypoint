@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { signIn, signOut, signUp } from './features/auth/authService'
-import { ensureProfile, type Profile } from './features/profiles/profileService'
+import {
+  ensureProfile,
+  updateProfileCosmetics,
+  uploadProfileAvatar,
+  type Profile,
+} from './features/profiles/profileService'
 import {
   completeTask,
   createTask,
@@ -35,6 +40,15 @@ type TaskFormState = {
 
 type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
 
+type ShopItem = {
+  id: string
+  label: string
+  description: string
+  cost: number
+  type: 'avatar_frame' | 'name_color'
+  value: string | null
+}
+
 const initialAuthState: AuthState = {
   displayName: '',
   email: '',
@@ -49,6 +63,57 @@ const initialTaskFormState: TaskFormState = {
   tagId: '',
   newTagName: '',
 }
+
+const shopItems: ShopItem[] = [
+  {
+    id: 'frame-cyan',
+    label: 'Cyan Border',
+    description: 'A clean cyan profile image border.',
+    cost: 25,
+    type: 'avatar_frame',
+    value: 'frame-cyan',
+  },
+  {
+    id: 'frame-gold',
+    label: 'Gold Border',
+    description: 'A bright gold profile image border.',
+    cost: 50,
+    type: 'avatar_frame',
+    value: 'frame-gold',
+  },
+  {
+    id: 'frame-fire',
+    label: 'Static Fire Border',
+    description: 'A warm flame-colored border effect.',
+    cost: 75,
+    type: 'avatar_frame',
+    value: 'frame-fire',
+  },
+  {
+    id: 'name-gold',
+    label: 'Gold Name',
+    description: 'Turns your display name gold.',
+    cost: 60,
+    type: 'name_color',
+    value: 'name-gold',
+  },
+  {
+    id: 'name-cyan',
+    label: 'Cyan Name',
+    description: 'Turns your display name cyan.',
+    cost: 40,
+    type: 'name_color',
+    value: 'name-cyan',
+  },
+  {
+    id: 'name-rose',
+    label: 'Rose Name',
+    description: 'Turns your display name rose.',
+    cost: 40,
+    type: 'name_color',
+    value: 'name-rose',
+  },
+]
 
 function App() {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
@@ -75,6 +140,9 @@ function App() {
   const [taskTags, setTaskTags] = useState<TaskTag[]>([])
   const [taskTagFilter, setTaskTagFilter] = useState('')
   const [isConfirmingDeleteTask, setIsConfirmingDeleteTask] = useState(false)
+  const [isPointShopOpen, setIsPointShopOpen] = useState(false)
+  const [profileActionMessage, setProfileActionMessage] = useState('')
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
 
   function clearSignedInState() {
     setProfile(null)
@@ -90,6 +158,9 @@ function App() {
     setTaskTags([])
     setTaskTagFilter('')
     setIsConfirmingDeleteTask(false)
+    setIsPointShopOpen(false)
+    setProfileActionMessage('')
+    setIsUpdatingProfile(false)
   }
 
   useEffect(() => {
@@ -229,6 +300,32 @@ function App() {
     })
   }, [taskCompletionFilter, taskSearch, taskTagFilter, tasks])
 
+  const avatarFrameClass = useMemo(() => {
+    switch (profile?.selected_avatar_frame) {
+      case 'frame-cyan':
+        return 'border-cyan-300 shadow-cyan-300/30'
+      case 'frame-gold':
+        return 'border-amber-300 shadow-amber-300/30'
+      case 'frame-fire':
+        return 'border-orange-400 shadow-orange-400/40'
+      default:
+        return 'border-white/15 shadow-cyan-950/20'
+    }
+  }, [profile?.selected_avatar_frame])
+
+  const profileNameClass = useMemo(() => {
+    switch (profile?.selected_name_color) {
+      case 'name-gold':
+        return 'text-amber-200'
+      case 'name-cyan':
+        return 'text-cyan-200'
+      case 'name-rose':
+        return 'text-rose-200'
+      default:
+        return 'text-white'
+    }
+  }, [profile?.selected_name_color])
+
   async function refreshTasks() {
     const { data, error } = await getTasks()
     setTasks(data ?? [])
@@ -238,6 +335,71 @@ function App() {
   async function refreshTaskTags() {
     const { data } = await getTaskTags()
     setTaskTags(data ?? [])
+  }
+
+  async function handleAvatarUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+
+    if (!user || !file) {
+      return
+    }
+
+    setIsUpdatingProfile(true)
+    setProfileActionMessage('')
+
+    const { data, error } = await uploadProfileAvatar(user.id, file)
+
+    if (error) {
+      setProfileActionMessage(error.message)
+      setIsUpdatingProfile(false)
+      return
+    }
+
+    if (data) {
+      setProfile(data as Profile)
+      setProfileActionMessage('Profile picture updated.')
+    }
+
+    event.target.value = ''
+    setIsUpdatingProfile(false)
+  }
+
+  async function handleBuyShopItem(item: ShopItem) {
+    if (!user || !profile) {
+      return
+    }
+
+    if (profile.total_points < item.cost) {
+      setProfileActionMessage('Not enough points for that reward yet.')
+      return
+    }
+
+    setIsUpdatingProfile(true)
+    setProfileActionMessage('')
+
+    const nextPoints = profile.total_points - item.cost
+    const { data, error } = await updateProfileCosmetics(user.id, {
+      total_points: nextPoints,
+      selected_avatar_frame:
+        item.type === 'avatar_frame'
+          ? item.value
+          : profile.selected_avatar_frame,
+      selected_name_color:
+        item.type === 'name_color' ? item.value : profile.selected_name_color,
+    })
+
+    if (error) {
+      setProfileActionMessage(error.message)
+      setIsUpdatingProfile(false)
+      return
+    }
+
+    if (data) {
+      setProfile(data as Profile)
+      setProfileActionMessage(`${item.label} equipped.`)
+    }
+
+    setIsUpdatingProfile(false)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -538,12 +700,45 @@ function App() {
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
             <aside className="space-y-6">
               <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-cyan-950/40">
-                <p className="text-sm font-medium text-cyan-200">
-                  Welcome back
-                </p>
-                <h2 className="mt-3 break-words text-2xl font-bold">
-                  {profile?.display_name ?? 'Player'}
-                </h2>
+                <div className="flex flex-wrap items-center gap-4">
+                  <label
+                    className={`group relative flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 bg-slate-900 text-2xl font-bold shadow-lg transition focus-within:ring-2 focus-within:ring-cyan-300 focus-within:ring-offset-2 focus-within:ring-offset-slate-950 ${avatarFrameClass}`}
+                  >
+                    {profile?.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-cyan-100">
+                        {(profile?.display_name ?? 'Player')
+                          .charAt(0)
+                          .toUpperCase()}
+                      </span>
+                    )}
+                    <span className="absolute inset-0 flex items-center justify-center bg-slate-950/70 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                      Upload
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUpdatingProfile}
+                      onChange={handleAvatarUpload}
+                      className="sr-only"
+                    />
+                  </label>
+                  <div>
+                    <p className="text-sm font-medium text-cyan-200">
+                      Welcome back
+                    </p>
+                    <h2
+                      className={`mt-2 break-words text-2xl font-bold ${profileNameClass}`}
+                    >
+                      {profile?.display_name ?? 'Player'}
+                    </h2>
+                  </div>
+                </div>
                 {profileError ? (
                   <p className="mt-4 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
                     Profile could not be loaded: {profileError}
@@ -561,6 +756,23 @@ function App() {
                     </div>
                   ))}
                 </dl>
+                {profileActionMessage ? (
+                  <p className="mt-4 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+                    {profileActionMessage}
+                  </p>
+                ) : null}
+                <div className="mt-5 grid gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileActionMessage('')
+                      setIsPointShopOpen(true)
+                    }}
+                    className="rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+                  >
+                    Point Shop
+                  </button>
+                </div>
               </section>
             </aside>
 
@@ -906,6 +1118,90 @@ function App() {
                   </button>
                 </div>
               </form>
+            </section>
+          </div>
+        ) : null}
+
+        {isPointShopOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="point-shop-title"
+          >
+            <section className="max-h-full w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                    Rewards
+                  </p>
+                  <h2 id="point-shop-title" className="mt-2 text-2xl font-bold">
+                    Point Shop
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Current balance: {profile?.total_points ?? 0} points
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPointShopOpen(false)}
+                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-3 md:grid-cols-2">
+                {shopItems.map((item) => {
+                  const isEquipped =
+                    (item.type === 'avatar_frame' &&
+                      profile?.selected_avatar_frame === item.value) ||
+                    (item.type === 'name_color' &&
+                      profile?.selected_name_color === item.value)
+                  const canAfford = (profile?.total_points ?? 0) >= item.cost
+
+                  return (
+                    <article
+                      key={item.id}
+                      className="rounded-lg border border-white/10 bg-white/[0.04] p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-semibold text-white">
+                            {item.label}
+                          </h3>
+                          <p className="mt-1 text-sm leading-5 text-slate-300">
+                            {item.description}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">
+                          {item.cost} pts
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={isUpdatingProfile || isEquipped || !canAfford}
+                        onClick={() => handleBuyShopItem(item)}
+                        className="mt-4 w-full rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isEquipped
+                          ? 'Equipped'
+                          : canAfford
+                            ? isUpdatingProfile
+                              ? 'Buying...'
+                              : 'Buy and equip'
+                            : 'Need more points'}
+                      </button>
+                    </article>
+                  )
+                })}
+              </div>
+
+              {profileActionMessage ? (
+                <p className="mt-5 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+                  {profileActionMessage}
+                </p>
+              ) : null}
             </section>
           </div>
         ) : null}
