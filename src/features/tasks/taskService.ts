@@ -352,6 +352,18 @@ export async function updateTaskStepCompletion(
     .single()
 }
 
+export async function updateTaskStatus(taskId: string, status: TaskStatus) {
+  return supabase
+    .from('tasks')
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .select()
+    .single()
+}
+
 export async function completeTask(task: Task, currentTotalPoints: number) {
   if (task.status === 'Completed') {
     return { data: null, error: null }

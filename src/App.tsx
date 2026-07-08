@@ -8,6 +8,7 @@ import {
   getTask,
   getTaskTags,
   getTasks,
+  updateTaskStatus,
   updateTask,
   type Task,
   type TaskTag,
@@ -453,6 +454,28 @@ function App() {
     if (updatedTask && allStepsComplete && updatedTask.status !== 'Completed') {
       await handleCompleteTask(updatedTask)
       return
+    }
+
+    if (updatedTask && updatedTask.status !== 'Completed') {
+      const hasCompletedSteps = updatedTask.task_steps.some(
+        (step) => step.is_completed,
+      )
+      const nextStatus = hasCompletedSteps ? 'In Progress' : 'Not Started'
+
+      if (updatedTask.status !== nextStatus) {
+        const { error: statusError } = await updateTaskStatus(
+          updatedTask.id,
+          nextStatus,
+        )
+
+        if (statusError) {
+          setTaskActionMessage(statusError.message)
+          setIsUpdatingTask(false)
+          return
+        }
+
+        await updateSelectedTask(updatedTask.id)
+      }
     }
 
     setIsUpdatingTask(false)
