@@ -364,6 +364,10 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     .single()
 }
 
+export async function deleteTask(taskId: string) {
+  return supabase.from('tasks').delete().eq('id', taskId)
+}
+
 export async function completeTask(task: Task, currentTotalPoints: number) {
   if (task.status === 'Completed') {
     return { data: null, error: null }

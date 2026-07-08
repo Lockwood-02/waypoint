@@ -5,6 +5,7 @@ import { ensureProfile, type Profile } from './features/profiles/profileService'
 import {
   completeTask,
   createTask,
+  deleteTask,
   getTask,
   getTaskTags,
   getTasks,
@@ -73,6 +74,7 @@ function App() {
     useState<TaskCompletionFilter>('all')
   const [taskTags, setTaskTags] = useState<TaskTag[]>([])
   const [taskTagFilter, setTaskTagFilter] = useState('')
+  const [isConfirmingDeleteTask, setIsConfirmingDeleteTask] = useState(false)
 
   function clearSignedInState() {
     setProfile(null)
@@ -87,6 +89,7 @@ function App() {
     setTaskCompletionFilter('all')
     setTaskTags([])
     setTaskTagFilter('')
+    setIsConfirmingDeleteTask(false)
   }
 
   useEffect(() => {
@@ -379,6 +382,7 @@ function App() {
 
   async function openTask(task: Task) {
     setTaskActionMessage('')
+    setIsConfirmingDeleteTask(false)
     const { data, error } = await getTask(task.id)
 
     if (error) {
@@ -478,6 +482,26 @@ function App() {
       }
     }
 
+    setIsUpdatingTask(false)
+  }
+
+  async function handleDeleteTask(task: Task) {
+    setIsUpdatingTask(true)
+    setTaskActionMessage('')
+
+    const { error } = await deleteTask(task.id)
+
+    if (error) {
+      setTaskActionMessage(error.message)
+      setIsUpdatingTask(false)
+      return
+    }
+
+    setTasks((currentTasks) =>
+      currentTasks.filter((currentTask) => currentTask.id !== task.id),
+    )
+    setSelectedTask(null)
+    setIsConfirmingDeleteTask(false)
     setIsUpdatingTask(false)
   }
 
@@ -986,6 +1010,35 @@ function App() {
               ) : null}
 
               <div className="mt-6 flex flex-wrap justify-end gap-3">
+                {isConfirmingDeleteTask ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isUpdatingTask}
+                      onClick={() => setIsConfirmingDeleteTask(false)}
+                      className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      Cancel delete
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isUpdatingTask}
+                      onClick={() => handleDeleteTask(selectedTask)}
+                      className="rounded-md bg-rose-300 px-4 py-2 text-sm font-bold text-rose-950 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      {isUpdatingTask ? 'Deleting...' : 'Confirm delete'}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isUpdatingTask}
+                    onClick={() => setIsConfirmingDeleteTask(true)}
+                    className="rounded-md border border-rose-300/50 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    Delete task
+                  </button>
+                )}
                 {selectedTask.status !== 'Completed' ? (
                   <button
                     type="button"
