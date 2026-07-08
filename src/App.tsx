@@ -814,19 +814,36 @@ function App() {
                     {profileActionMessage}
                   </p>
                 ) : null}
-                <div className="mt-5 grid gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setProfileActionMessage('')
-                      setIsPointShopOpen(true)
-                    }}
-                    className="rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
-                  >
-                    Point Shop
-                  </button>
-                </div>
               </section>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileActionMessage('')
+                    setIsPointShopOpen(true)
+                  }}
+                  className="rounded-lg border border-white/10 bg-white/[0.06] p-5 text-center shadow-xl shadow-cyan-950/20 transition hover:border-cyan-300/70 hover:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                >
+                  <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-300 text-2xl font-bold text-slate-950">
+                    $
+                  </span>
+                  <span className="mt-3 block text-sm font-bold text-white">
+                    Point Shop
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="rounded-lg border border-white/10 bg-white/[0.04] p-5 text-center opacity-75"
+                >
+                  <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-amber-300/50 bg-amber-300/10 text-2xl font-bold text-amber-100">
+                    !
+                  </span>
+                  <span className="mt-3 block text-sm font-bold text-slate-200">
+                    Coming Soon
+                  </span>
+                </button>
+              </div>
             </aside>
 
             <section className="flex max-h-[36rem] min-h-0 flex-col rounded-lg border border-white/10 bg-white/[0.06] p-6 lg:max-h-[calc(100vh-12rem)]">
