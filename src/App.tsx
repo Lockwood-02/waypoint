@@ -27,6 +27,8 @@ type TaskFormState = {
   steps: string[]
 }
 
+type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
+
 const initialAuthState: AuthState = {
   displayName: '',
   email: '',
@@ -59,6 +61,9 @@ function App() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [taskActionMessage, setTaskActionMessage] = useState('')
   const [isUpdatingTask, setIsUpdatingTask] = useState(false)
+  const [taskSearch, setTaskSearch] = useState('')
+  const [taskCompletionFilter, setTaskCompletionFilter] =
+    useState<TaskCompletionFilter>('all')
 
   function clearSignedInState() {
     setProfile(null)
@@ -69,6 +74,8 @@ function App() {
     setIsCreateTaskModalOpen(false)
     setSelectedTask(null)
     setTaskActionMessage('')
+    setTaskSearch('')
+    setTaskCompletionFilter('all')
   }
 
   useEffect(() => {
@@ -162,6 +169,24 @@ function App() {
         : [],
     [profile, tasks, user],
   )
+
+  const visibleTasks = useMemo(() => {
+    const normalizedSearch = taskSearch.trim().toLowerCase()
+
+    return tasks.filter((task) => {
+      const matchesSearch = normalizedSearch
+        ? task.title.toLowerCase().includes(normalizedSearch)
+        : true
+      const matchesCompletion =
+        taskCompletionFilter === 'all' ||
+        (taskCompletionFilter === 'completed' &&
+          task.status === 'Completed') ||
+        (taskCompletionFilter === 'incomplete' &&
+          task.status !== 'Completed')
+
+      return matchesSearch && matchesCompletion
+    })
+  }, [taskCompletionFilter, taskSearch, tasks])
 
   async function refreshTasks() {
     const { data, error } = await getTasks()
@@ -475,6 +500,41 @@ function App() {
                 </p>
               ) : null}
 
+              <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+                <label className="block">
+                  <span className="sr-only">Search tasks by title</span>
+                  <input
+                    type="search"
+                    value={taskSearch}
+                    onChange={(event) => setTaskSearch(event.target.value)}
+                    className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                    placeholder="Search task titles"
+                  />
+                </label>
+                <div className="grid grid-cols-3 rounded-md bg-slate-900/80 p-1">
+                  {[
+                    ['all', 'All'],
+                    ['incomplete', 'Incomplete'],
+                    ['completed', 'Completed'],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        setTaskCompletionFilter(value as TaskCompletionFilter)
+                      }
+                      className={`rounded px-3 py-2 text-xs font-semibold transition ${
+                        taskCompletionFilter === value
+                          ? 'bg-cyan-300 text-slate-950'
+                          : 'text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
                 {isLoadingTasks ? (
                   <p className="text-sm text-slate-300">Loading tasks...</p>
@@ -489,7 +549,16 @@ function App() {
                   </div>
                 ) : null}
 
-                {tasks.map((task) => {
+                {!isLoadingTasks && tasks.length > 0 && visibleTasks.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-white/15 p-6 text-center">
+                    <p className="font-semibold">No matching tasks</p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      Try a different title search or completion filter.
+                    </p>
+                  </div>
+                ) : null}
+
+                {visibleTasks.map((task) => {
                   const completedSteps = task.task_steps.filter(
                     (step) => step.is_completed,
                   ).length
