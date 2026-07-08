@@ -15,6 +15,22 @@ export type TaskStep = {
   created_at: string
 }
 
+export type TaskTag = {
+  id: string
+  user_id: string
+  name: string
+  color: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type TaskTagLink = {
+  task_id: string
+  tag_id: string
+  created_at: string
+  task_tags: TaskTag | null
+}
+
 export type Task = {
   id: string
   user_id: string
@@ -29,6 +45,7 @@ export type Task = {
   created_at: string
   updated_at: string
   task_steps: TaskStep[]
+  task_tag_links: TaskTagLink[]
 }
 
 export type CreateTaskInput = {
@@ -36,6 +53,8 @@ export type CreateTaskInput = {
   description?: string
   points: number
   steps: string[]
+  tagId?: string
+  newTagName?: string
 }
 
 export type UpdateTaskInput = CreateTaskInput
@@ -46,7 +65,11 @@ export async function getTasks() {
     .select(
       `
       *,
-      task_steps (*)
+      task_steps (*),
+      task_tag_links (
+        *,
+        task_tags (*)
+      )
     `,
     )
     .order('created_at', { ascending: false })
@@ -57,12 +80,94 @@ export async function getTasks() {
       task_steps: [...(task.task_steps ?? [])].sort(
         (first, second) => first.position - second.position,
       ),
+      task_tag_links: task.task_tag_links ?? [],
     }))
 
     return { ...response, data: sortedTasks as Task[] }
   }
 
   return { ...response, data: null }
+}
+
+export async function getTaskTags() {
+  const response = await supabase
+    .from('task_tags')
+    .select('*')
+    .order('name', { ascending: true })
+
+  return {
+    ...response,
+    data: response.data ? (response.data as TaskTag[]) : null,
+  }
+}
+
+async function resolveTagId(tagId?: string, newTagName?: string) {
+  const trimmedName = newTagName?.trim()
+
+  if (!trimmedName) {
+    return { data: tagId || null, error: null }
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { data: null, error: userError ?? new Error('Not logged in') }
+  }
+
+  const existingResponse = await supabase
+    .from('task_tags')
+    .select('*')
+    .eq('user_id', user.id)
+    .ilike('name', trimmedName)
+    .maybeSingle()
+
+  if (existingResponse.error) {
+    return { data: null, error: existingResponse.error }
+  }
+
+  if (existingResponse.data) {
+    return { data: existingResponse.data.id as string, error: null }
+  }
+
+  const createResponse = await supabase
+    .from('task_tags')
+    .insert({
+      user_id: user.id,
+      name: trimmedName,
+    })
+    .select()
+    .single()
+
+  if (createResponse.error || !createResponse.data) {
+    return { data: null, error: createResponse.error }
+  }
+
+  return { data: createResponse.data.id as string, error: null }
+}
+
+async function replaceTaskTag(taskId: string, tagId: string | null) {
+  const deleteResponse = await supabase
+    .from('task_tag_links')
+    .delete()
+    .eq('task_id', taskId)
+
+  if (deleteResponse.error) {
+    return { error: deleteResponse.error }
+  }
+
+  if (!tagId) {
+    return { error: null }
+  }
+
+  const linkResponse = await supabase.from('task_tag_links').insert({
+    task_id: taskId,
+    tag_id: tagId,
+  })
+
+  return { error: linkResponse.error }
 }
 
 export async function createTask(input: CreateTaskInput) {
@@ -91,6 +196,18 @@ export async function createTask(input: CreateTaskInput) {
     return { data: null, error: taskResponse.error }
   }
 
+  const resolvedTag = await resolveTagId(input.tagId, input.newTagName)
+
+  if (resolvedTag.error) {
+    return { data: null, error: resolvedTag.error }
+  }
+
+  const tagResponse = await replaceTaskTag(taskResponse.data.id, resolvedTag.data)
+
+  if (tagResponse.error) {
+    return { data: null, error: tagResponse.error }
+  }
+
   const stepRows = input.steps
     .map((title) => title.trim())
     .filter(Boolean)
@@ -117,7 +234,11 @@ export async function getTask(taskId: string) {
     .select(
       `
       *,
-      task_steps (*)
+      task_steps (*),
+      task_tag_links (
+        *,
+        task_tags (*)
+      )
     `,
     )
     .eq('id', taskId)
@@ -131,6 +252,7 @@ export async function getTask(taskId: string) {
         task_steps: [...(response.data.task_steps ?? [])].sort(
           (first, second) => first.position - second.position,
         ),
+        task_tag_links: response.data.task_tag_links ?? [],
       } as Task,
     }
   }
@@ -167,6 +289,18 @@ export async function updateTask(taskId: string, input: UpdateTaskInput) {
 
   if (taskResponse.error || !taskResponse.data) {
     return { data: null, error: taskResponse.error }
+  }
+
+  const resolvedTag = await resolveTagId(input.tagId, input.newTagName)
+
+  if (resolvedTag.error) {
+    return { data: null, error: resolvedTag.error }
+  }
+
+  const tagResponse = await replaceTaskTag(taskId, resolvedTag.data)
+
+  if (tagResponse.error) {
+    return { data: null, error: tagResponse.error }
   }
 
   const deleteResponse = await supabase

@@ -6,9 +6,11 @@ import {
   completeTask,
   createTask,
   getTask,
+  getTaskTags,
   getTasks,
   updateTask,
   type Task,
+  type TaskTag,
 } from './features/tasks/taskService'
 import { supabase } from './lib/supabaseClient'
 
@@ -25,6 +27,8 @@ type TaskFormState = {
   description: string
   points: string
   steps: string[]
+  tagId: string
+  newTagName: string
 }
 
 type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
@@ -40,6 +44,8 @@ const initialTaskFormState: TaskFormState = {
   description: '',
   points: '10',
   steps: [''],
+  tagId: '',
+  newTagName: '',
 }
 
 function App() {
@@ -64,6 +70,8 @@ function App() {
   const [taskSearch, setTaskSearch] = useState('')
   const [taskCompletionFilter, setTaskCompletionFilter] =
     useState<TaskCompletionFilter>('all')
+  const [taskTags, setTaskTags] = useState<TaskTag[]>([])
+  const [taskTagFilter, setTaskTagFilter] = useState('')
 
   function clearSignedInState() {
     setProfile(null)
@@ -76,6 +84,8 @@ function App() {
     setTaskActionMessage('')
     setTaskSearch('')
     setTaskCompletionFilter('all')
+    setTaskTags([])
+    setTaskTagFilter('')
   }
 
   useEffect(() => {
@@ -150,6 +160,30 @@ function App() {
     }
   }, [user])
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadTaskTags() {
+      if (!user) {
+        return
+      }
+
+      const { data } = await getTaskTags()
+
+      if (!isMounted) {
+        return
+      }
+
+      setTaskTags(data ?? [])
+    }
+
+    loadTaskTags()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user])
+
   const title = authMode === 'login' ? 'Welcome back' : 'Create your account'
   const subtitle =
     authMode === 'login'
@@ -183,15 +217,23 @@ function App() {
           task.status === 'Completed') ||
         (taskCompletionFilter === 'incomplete' &&
           task.status !== 'Completed')
+      const matchesTag = taskTagFilter
+        ? task.task_tag_links.some((link) => link.tag_id === taskTagFilter)
+        : true
 
-      return matchesSearch && matchesCompletion
+      return matchesSearch && matchesCompletion && matchesTag
     })
-  }, [taskCompletionFilter, taskSearch, tasks])
+  }, [taskCompletionFilter, taskSearch, taskTagFilter, tasks])
 
   async function refreshTasks() {
     const { data, error } = await getTasks()
     setTasks(data ?? [])
     setTasksError(error?.message ?? '')
+  }
+
+  async function refreshTaskTags() {
+    const { data } = await getTaskTags()
+    setTaskTags(data ?? [])
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -249,6 +291,8 @@ function App() {
   }
 
   function openEditTaskModal(task: Task) {
+    const currentTag = task.task_tag_links[0]?.task_tags
+
     setEditingTask(task)
     setTaskForm({
       title: task.title,
@@ -257,6 +301,8 @@ function App() {
       steps: task.task_steps.length
         ? task.task_steps.map((step) => step.title)
         : [''],
+      tagId: currentTag?.id ?? '',
+      newTagName: '',
     })
     setTaskActionMessage('')
     setSelectedTask(null)
@@ -274,6 +320,8 @@ function App() {
       description: taskForm.description.trim(),
       points: Number.isFinite(points) && points > 0 ? points : 10,
       steps: taskForm.steps,
+      tagId: taskForm.newTagName.trim() ? undefined : taskForm.tagId,
+      newTagName: taskForm.newTagName,
     }
 
     const { data, error } = editingTask
@@ -296,6 +344,7 @@ function App() {
       setTaskForm(initialTaskFormState)
       setTaskActionMessage(editingTask ? 'Task saved.' : 'Task created.')
       setIsCreateTaskModalOpen(false)
+      await refreshTaskTags()
     }
 
     setIsCreatingTask(false)
@@ -500,7 +549,7 @@ function App() {
                 </p>
               ) : null}
 
-              <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+              <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
                 <label className="block">
                   <span className="sr-only">Search tasks by title</span>
                   <input
@@ -533,6 +582,21 @@ function App() {
                     </button>
                   ))}
                 </div>
+                <label className="block">
+                  <span className="sr-only">Filter tasks by tag</span>
+                  <select
+                    value={taskTagFilter}
+                    onChange={(event) => setTaskTagFilter(event.target.value)}
+                    className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30 md:w-44"
+                  >
+                    <option value="">All tags</option>
+                    {taskTags.map((tag) => (
+                      <option key={tag.id} value={tag.id}>
+                        {tag.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
 
               <div className="mt-5 min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
@@ -553,7 +617,7 @@ function App() {
                   <div className="rounded-lg border border-dashed border-white/15 p-6 text-center">
                     <p className="font-semibold">No matching tasks</p>
                     <p className="mt-2 text-sm text-slate-300">
-                      Try a different title search or completion filter.
+                      Try a different title search, completion filter, or tag.
                     </p>
                   </div>
                 ) : null}
@@ -563,6 +627,7 @@ function App() {
                     (step) => step.is_completed,
                   ).length
                   const totalSteps = task.task_steps.length
+                  const taskTag = task.task_tag_links[0]?.task_tags
 
                   return (
                     <button
@@ -591,6 +656,7 @@ function App() {
                             ? `${completedSteps}/${totalSteps} steps`
                             : 'No steps'}
                         </span>
+                        {taskTag ? <span>{taskTag.name}</span> : null}
                       </div>
                     </button>
                   )
@@ -683,6 +749,50 @@ function App() {
                     className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
                   />
                 </label>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-200">
+                      Project tag
+                    </span>
+                    <select
+                      value={taskForm.tagId}
+                      onChange={(event) =>
+                        setTaskForm((current) => ({
+                          ...current,
+                          tagId: event.target.value,
+                          newTagName: '',
+                        }))
+                      }
+                      className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                    >
+                      <option value="">No tag</option>
+                      {taskTags.map((tag) => (
+                        <option key={tag.id} value={tag.id}>
+                          {tag.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-200">
+                      Create new tag
+                    </span>
+                    <input
+                      value={taskForm.newTagName}
+                      onChange={(event) =>
+                        setTaskForm((current) => ({
+                          ...current,
+                          tagId: '',
+                          newTagName: event.target.value,
+                        }))
+                      }
+                      className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                      placeholder="Waypoint app"
+                    />
+                  </label>
+                </div>
 
                 <div>
                   <div className="flex items-center justify-between gap-3">
@@ -795,6 +905,11 @@ function App() {
                 <span className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-slate-200">
                   {selectedTask.status}
                 </span>
+                {selectedTask.task_tag_links[0]?.task_tags ? (
+                  <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+                    {selectedTask.task_tag_links[0].task_tags.name}
+                  </span>
+                ) : null}
               </div>
 
               <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-slate-200">
