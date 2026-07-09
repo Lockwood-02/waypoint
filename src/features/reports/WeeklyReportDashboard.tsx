@@ -257,7 +257,7 @@ function SpreadsheetReportTable({
   ]
 
   return (
-    <div className="mt-6 overflow-x-auto report-table-wrap">
+    <div className="mt-6 max-w-full overflow-x-auto report-table-wrap">
       <table className="w-full min-w-[48rem] border-collapse text-left text-sm report-table">
         <thead>
           <tr>
@@ -591,8 +591,8 @@ export function WeeklyReportDashboard({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] weekly-report-screen">
-      <section className="space-y-6 print:hidden">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] weekly-report-screen">
+      <section className="min-w-0 space-y-6 print:hidden">
         <div className="rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-cyan-950/40">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -900,7 +900,7 @@ export function WeeklyReportDashboard({
             ) : null}
 
             {filteredProgressTaskOptions.map((task) => (
-                <TaskPickerRow
+              <TaskPickerRow
                   key={task.id}
                   task={task}
                   checked={selectedProgressTaskIds.includes(task.id)}
@@ -917,7 +917,7 @@ export function WeeklyReportDashboard({
         </div>
       </section>
 
-      <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6 report-preview">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] p-6 report-preview">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300 report-eyebrow">
