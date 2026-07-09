@@ -13,6 +13,7 @@ import {
   completeTask,
   createTask,
   deleteTask,
+  deleteUnusedTaskTag,
   getTask,
   getTaskTags,
   getTasks,
@@ -150,6 +151,9 @@ function App() {
   const [ownedShopItemIds, setOwnedShopItemIds] = useState<string[]>([])
   const [activeDashboard, setActiveDashboard] =
     useState<ActiveDashboard>('tasks')
+  const [isManageTagsOpen, setIsManageTagsOpen] = useState(false)
+  const [tagActionMessage, setTagActionMessage] = useState('')
+  const [deletingTagId, setDeletingTagId] = useState('')
 
   function clearSignedInState() {
     setProfile(null)
@@ -170,6 +174,9 @@ function App() {
     setIsUpdatingProfile(false)
     setOwnedShopItemIds([])
     setActiveDashboard('tasks')
+    setIsManageTagsOpen(false)
+    setTagActionMessage('')
+    setDeletingTagId('')
   }
 
   useEffect(() => {
@@ -333,6 +340,18 @@ function App() {
     })
   }, [taskCompletionFilter, taskSearch, taskTagFilter, tasks])
 
+  const tagUsageCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+
+    tasks.forEach((task) => {
+      task.task_tag_links.forEach((link) => {
+        counts.set(link.tag_id, (counts.get(link.tag_id) ?? 0) + 1)
+      })
+    })
+
+    return counts
+  }, [tasks])
+
   const avatarFrameClass = useMemo(() => {
     switch (profile?.selected_avatar_frame) {
       case 'frame-cyan':
@@ -368,6 +387,28 @@ function App() {
   async function refreshTaskTags() {
     const { data } = await getTaskTags()
     setTaskTags(data ?? [])
+  }
+
+  async function handleDeleteTag(tag: TaskTag) {
+    setDeletingTagId(tag.id)
+    setTagActionMessage('')
+
+    const { error } = await deleteUnusedTaskTag(tag.id)
+
+    if (error) {
+      setTagActionMessage(error.message)
+      setDeletingTagId('')
+      return
+    }
+
+    setTaskTags((currentTags) =>
+      currentTags.filter((currentTag) => currentTag.id !== tag.id),
+    )
+    setTaskTagFilter((currentFilter) =>
+      currentFilter === tag.id ? '' : currentFilter,
+    )
+    setTagActionMessage(`${tag.name} deleted.`)
+    setDeletingTagId('')
   }
 
   async function handleAvatarUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -891,6 +932,16 @@ function App() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      setTagActionMessage('')
+                      setIsManageTagsOpen(true)
+                    }}
+                    className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+                  >
+                    Manage tags
+                  </button>
+                  <button
+                    type="button"
                     onClick={refreshTasks}
                     className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
                   >
@@ -1319,6 +1370,80 @@ function App() {
                   {profileActionMessage}
                 </p>
               ) : null}
+            </section>
+          </div>
+        ) : null}
+
+        {isManageTagsOpen ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="manage-tags-title"
+          >
+            <section className="max-h-full w-full max-w-xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                    Tags
+                  </p>
+                  <h2 id="manage-tags-title" className="mt-2 text-2xl font-bold">
+                    Manage tags
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsManageTagsOpen(false)}
+                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200"
+                >
+                  Close
+                </button>
+              </div>
+
+              {tagActionMessage ? (
+                <p className="mt-5 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+                  {tagActionMessage}
+                </p>
+              ) : null}
+
+              <div className="mt-5 space-y-3">
+                {taskTags.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-white/15 p-4 text-sm text-slate-300">
+                    No tags have been created yet.
+                  </p>
+                ) : null}
+
+                {taskTags.map((tag) => {
+                  const usageCount = tagUsageCounts.get(tag.id) ?? 0
+                  const isDeleting = deletingTagId === tag.id
+
+                  return (
+                    <div
+                      key={tag.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.04] p-4"
+                    >
+                      <div>
+                        <p className="font-semibold text-white">{tag.name}</p>
+                        <p className="mt-1 text-sm text-slate-300">
+                          {usageCount === 0
+                            ? 'Not assigned to any task.'
+                            : `${usageCount} task${
+                                usageCount === 1 ? '' : 's'
+                              } using this tag.`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={usageCount > 0 || Boolean(deletingTagId)}
+                        onClick={() => handleDeleteTag(tag)}
+                        className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
             </section>
           </div>
         ) : null}

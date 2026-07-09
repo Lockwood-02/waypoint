@@ -101,6 +101,27 @@ export async function getTaskTags() {
   }
 }
 
+export async function deleteUnusedTaskTag(tagId: string) {
+  const linksResponse = await supabase
+    .from('task_tag_links')
+    .select('task_id')
+    .eq('tag_id', tagId)
+    .limit(1)
+
+  if (linksResponse.error) {
+    return { data: null, error: linksResponse.error }
+  }
+
+  if (linksResponse.data && linksResponse.data.length > 0) {
+    return {
+      data: null,
+      error: new Error('This tag is still assigned to a task.'),
+    }
+  }
+
+  return supabase.from('task_tags').delete().eq('id', tagId)
+}
+
 async function resolveTagId(tagId?: string, newTagName?: string) {
   const trimmedName = newTagName?.trim()
 
