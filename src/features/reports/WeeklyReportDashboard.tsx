@@ -8,7 +8,10 @@ type WeeklyReportDashboardProps = {
   onRefreshTasks: () => void
 }
 
-type ReportTemplate = 'weekly-progress' | 'spreadsheet-progress'
+type ReportTemplate =
+  | 'weekly-progress'
+  | 'spreadsheet-progress'
+  | 'project-status-outline'
 type TaskComments = Record<string, string>
 
 function toDateInputValue(date: Date) {
@@ -93,6 +96,55 @@ function getTaskStepsSummary(task: Task) {
   return task.task_steps
     .map((step) => `${step.is_completed ? 'Done' : 'Open'}: ${step.title}`)
     .join('\n')
+}
+
+function buildProjectStatusOutline(
+  completedTasks: Task[],
+  progressTasks: Task[],
+  taskComments: TaskComments,
+) {
+  const reportRows = [
+    ...completedTasks.map((task) => ({ section: 'Completed', task })),
+    ...progressTasks.map((task) => ({ section: 'In progress', task })),
+  ]
+
+  if (reportRows.length === 0) {
+    return 'No tasks have been added to this report yet.'
+  }
+
+  return reportRows
+    .map(({ section, task }) => {
+      const statusDetails = [
+        task.status,
+        section === 'Completed' && task.completed_at
+          ? `Completed ${formatDate(task.completed_at)}`
+          : null,
+        task.description?.trim() || null,
+      ]
+        .filter(Boolean)
+        .join(' - ')
+      const nextSteps = task.task_steps.length
+        ? task.task_steps
+            .map(
+              (step) =>
+                `              -    ${step.title} (${
+                  step.is_completed ? 'Done' : 'Open'
+                })`,
+            )
+            .join('\n')
+        : '              -    No checklist steps added.'
+      const comment =
+        taskComments[task.id]?.trim() || 'No issues, concerns, or comments added.'
+
+      return `${task.title}
+          -    Status
+              -    ${statusDetails || 'No current status added.'}
+          -    Next Steps
+${nextSteps}
+          -    Issues/Concerns/Comments
+              -    ${comment}`
+    })
+    .join('\n\n')
 }
 
 function ReportTaskCard({
@@ -315,6 +367,14 @@ function SpreadsheetReportTable({
   )
 }
 
+function ProjectStatusOutlineReport({ reportText }: { reportText: string }) {
+  return (
+    <pre className="mt-6 max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-slate-900/70 p-4 font-sans text-sm leading-6 text-slate-100 report-outline">
+      {reportText}
+    </pre>
+  )
+}
+
 export function WeeklyReportDashboard({
   tasks,
   isLoadingTasks,
@@ -342,6 +402,7 @@ export function WeeklyReportDashboard({
   const [progressTaskTagFilter, setProgressTaskTagFilter] = useState('')
   const [taskComments, setTaskComments] = useState<TaskComments>({})
   const [openCommentTaskIds, setOpenCommentTaskIds] = useState<string[]>([])
+  const [copyMessage, setCopyMessage] = useState('')
 
   const startDate = useMemo(
     () => parseDateInput(periodStart) ?? getCurrentWeekStart(),
@@ -497,9 +558,15 @@ export function WeeklyReportDashboard({
   const periodLabel = `${formatDate(periodStart)} - ${formatDate(periodEnd)}`
   const reportTaskCount = completedTasks.length + progressTasks.length
   const reportTitle =
-    reportTemplate === 'spreadsheet-progress'
+    reportTemplate === 'project-status-outline'
+      ? 'Project status outline'
+      : reportTemplate === 'spreadsheet-progress'
       ? 'Spreadsheet progress report'
       : 'Weekly progress summary'
+  const projectStatusOutlineText = useMemo(
+    () => buildProjectStatusOutline(completedTasks, progressTasks, taskComments),
+    [completedTasks, progressTasks, taskComments],
+  )
 
   function updateTaskComment(taskId: string, comment: string) {
     setTaskComments((currentComments) => ({
@@ -542,6 +609,20 @@ export function WeeklyReportDashboard({
     link.download = `waypoint-${reportTemplate}-${periodStart}-to-${periodEnd}.csv`
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  async function copyReportToClipboard() {
+    const reportText =
+      reportTemplate === 'project-status-outline'
+        ? projectStatusOutlineText
+        : `${reportTitle}\n${periodLabel}`
+
+    try {
+      await navigator.clipboard.writeText(reportText)
+      setCopyMessage('Copied to clipboard.')
+    } catch {
+      setCopyMessage('Clipboard copy was blocked by the browser.')
+    }
   }
 
   function isCompletedTaskIncluded(task: Task) {
@@ -648,14 +729,18 @@ export function WeeklyReportDashboard({
             </span>
             <select
               value={reportTemplate}
-              onChange={(event) =>
+              onChange={(event) => {
                 setReportTemplate(event.target.value as ReportTemplate)
-              }
+                setCopyMessage('')
+              }}
               className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
             >
               <option value="weekly-progress">Weekly progress summary</option>
               <option value="spreadsheet-progress">
                 Spreadsheet progress report
+              </option>
+              <option value="project-status-outline">
+                Project status outline
               </option>
             </select>
           </label>
@@ -693,14 +778,30 @@ export function WeeklyReportDashboard({
             >
               Print report
             </button>
-            <button
-              type="button"
-              onClick={downloadSpreadsheetCsv}
-              className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
-            >
-              Download CSV
-            </button>
+            {reportTemplate === 'spreadsheet-progress' ? (
+              <button
+                type="button"
+                onClick={downloadSpreadsheetCsv}
+                className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+              >
+                Download CSV
+              </button>
+            ) : null}
+            {reportTemplate === 'project-status-outline' ? (
+              <button
+                type="button"
+                onClick={copyReportToClipboard}
+                className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+              >
+                Copy report
+              </button>
+            ) : null}
           </div>
+          {copyMessage ? (
+            <p className="mt-3 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+              {copyMessage}
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
@@ -940,7 +1041,9 @@ export function WeeklyReportDashboard({
           </div>
         </div>
 
-        {reportTemplate === 'spreadsheet-progress' ? (
+        {reportTemplate === 'project-status-outline' ? (
+          <ProjectStatusOutlineReport reportText={projectStatusOutlineText} />
+        ) : reportTemplate === 'spreadsheet-progress' ? (
           <SpreadsheetReportTable
             completedTasks={completedTasks}
             progressTasks={progressTasks}
