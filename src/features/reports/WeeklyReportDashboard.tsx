@@ -157,6 +157,14 @@ export function WeeklyReportDashboard({
   const [selectedProgressTaskIds, setSelectedProgressTaskIds] = useState<
     string[]
   >([])
+  const [selectedCompletedTaskIds, setSelectedCompletedTaskIds] = useState<
+    string[]
+  >([])
+  const [excludedCompletedTaskIds, setExcludedCompletedTaskIds] = useState<
+    string[]
+  >([])
+  const [completedTaskSearch, setCompletedTaskSearch] = useState('')
+  const [completedTaskTagFilter, setCompletedTaskTagFilter] = useState('')
   const [progressTaskSearch, setProgressTaskSearch] = useState('')
   const [progressTaskTagFilter, setProgressTaskTagFilter] = useState('')
 
@@ -169,16 +177,42 @@ export function WeeklyReportDashboard({
     [periodEnd],
   )
 
-  const completedTasks = useMemo(
+  const completedTaskOptions = useMemo(
     () =>
       tasks
-        .filter((task) => isTaskCompletedInPeriod(task, startDate, endDate))
+        .filter((task) => task.status === 'Completed')
         .sort(
           (firstTask, secondTask) =>
             new Date(secondTask.completed_at ?? '').getTime() -
             new Date(firstTask.completed_at ?? '').getTime(),
         ),
-    [endDate, startDate, tasks],
+    [tasks],
+  )
+
+  const completedTasksInPeriod = useMemo(
+    () =>
+      completedTaskOptions.filter((task) =>
+        isTaskCompletedInPeriod(task, startDate, endDate),
+      ),
+    [completedTaskOptions, endDate, startDate],
+  )
+
+  const completedTasks = useMemo(
+    () =>
+      completedTaskOptions.filter((task) => {
+        const isInPeriod = isTaskCompletedInPeriod(task, startDate, endDate)
+        const isManuallySelected = selectedCompletedTaskIds.includes(task.id)
+        const isExcluded = excludedCompletedTaskIds.includes(task.id)
+
+        return (isInPeriod && !isExcluded) || isManuallySelected
+      }),
+    [
+      completedTaskOptions,
+      endDate,
+      excludedCompletedTaskIds,
+      selectedCompletedTaskIds,
+      startDate,
+    ],
   )
 
   const progressTaskOptions = useMemo(
@@ -190,6 +224,22 @@ export function WeeklyReportDashboard({
         ),
     [tasks],
   )
+
+  const completedTaskTags = useMemo(() => {
+    const tagsById = new Map<string, string>()
+
+    completedTaskOptions.forEach((task) => {
+      const tag = task.task_tag_links[0]?.task_tags
+
+      if (tag) {
+        tagsById.set(tag.id, tag.name)
+      }
+    })
+
+    return [...tagsById.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((firstTag, secondTag) => firstTag.name.localeCompare(secondTag.name))
+  }, [completedTaskOptions])
 
   const progressTaskTags = useMemo(() => {
     const tagsById = new Map<string, string>()
@@ -206,6 +256,33 @@ export function WeeklyReportDashboard({
       .map(([id, name]) => ({ id, name }))
       .sort((firstTag, secondTag) => firstTag.name.localeCompare(secondTag.name))
   }, [progressTaskOptions])
+
+  const hasCompletedTaskLookup =
+    completedTaskSearch.trim().length > 0 || completedTaskTagFilter.length > 0
+
+  const filteredCompletedTaskOptions = useMemo(() => {
+    if (!hasCompletedTaskLookup) {
+      return []
+    }
+
+    const normalizedSearch = completedTaskSearch.trim().toLowerCase()
+
+    return completedTaskOptions.filter((task) => {
+      const matchesSearch = normalizedSearch
+        ? task.title.toLowerCase().includes(normalizedSearch)
+        : true
+      const matchesTag = completedTaskTagFilter
+        ? getTaskTagId(task) === completedTaskTagFilter
+        : true
+
+      return matchesSearch && matchesTag
+    })
+  }, [
+    completedTaskOptions,
+    completedTaskSearch,
+    completedTaskTagFilter,
+    hasCompletedTaskLookup,
+  ])
 
   const hasProgressTaskLookup =
     progressTaskSearch.trim().length > 0 || progressTaskTagFilter.length > 0
@@ -244,6 +321,44 @@ export function WeeklyReportDashboard({
 
   const periodLabel = `${formatDate(periodStart)} - ${formatDate(periodEnd)}`
   const reportTaskCount = completedTasks.length + progressTasks.length
+
+  function isCompletedTaskIncluded(task: Task) {
+    const isInPeriod = isTaskCompletedInPeriod(task, startDate, endDate)
+
+    return (
+      selectedCompletedTaskIds.includes(task.id) ||
+      (isInPeriod && !excludedCompletedTaskIds.includes(task.id))
+    )
+  }
+
+  function toggleCompletedTask(task: Task) {
+    const isInPeriod = isTaskCompletedInPeriod(task, startDate, endDate)
+    const isIncluded = isCompletedTaskIncluded(task)
+
+    if (isIncluded) {
+      if (isInPeriod) {
+        setExcludedCompletedTaskIds((currentTaskIds) =>
+          currentTaskIds.includes(task.id)
+            ? currentTaskIds
+            : [...currentTaskIds, task.id],
+        )
+      }
+
+      setSelectedCompletedTaskIds((currentTaskIds) =>
+        currentTaskIds.filter((currentTaskId) => currentTaskId !== task.id),
+      )
+      return
+    }
+
+    setExcludedCompletedTaskIds((currentTaskIds) =>
+      currentTaskIds.filter((currentTaskId) => currentTaskId !== task.id),
+    )
+    setSelectedCompletedTaskIds((currentTaskIds) =>
+      currentTaskIds.includes(task.id)
+        ? currentTaskIds
+        : [...currentTaskIds, task.id],
+    )
+  }
 
   function toggleProgressTask(taskId: string) {
     setSelectedProgressTaskIds((currentTaskIds) =>
@@ -349,6 +464,143 @@ export function WeeklyReportDashboard({
           >
             Print report
           </button>
+        </div>
+
+        <div className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
+          <h2 className="text-xl font-semibold">Adjust completed tasks</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Completed tasks from the selected dates start checked. Uncheck any
+            that should not appear, or search for another completed task to add.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              From selected dates
+            </p>
+
+            {isLoadingTasks ? (
+              <p className="text-sm text-slate-300">Loading tasks...</p>
+            ) : null}
+
+            {!isLoadingTasks && completedTasksInPeriod.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-5 text-center">
+                <p className="font-semibold">No completed tasks in this range</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Search below to add completed tasks manually.
+                </p>
+              </div>
+            ) : null}
+
+            {completedTasksInPeriod.map((task) => (
+              <label
+                key={task.id}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-slate-900/70 p-4 transition hover:border-cyan-300/70"
+              >
+                <input
+                  type="checkbox"
+                  checked={isCompletedTaskIncluded(task)}
+                  onChange={() => toggleCompletedTask(task)}
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-300"
+                />
+                <span>
+                  <span className="block font-semibold text-white">
+                    {task.title}
+                  </span>
+                  <span className="mt-1 block text-sm text-slate-300">
+                    {getTaskTagName(task)} - Completed{' '}
+                    {formatDate(task.completed_at)}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+            <label className="block">
+              <span className="sr-only">Search completed tasks</span>
+              <input
+                type="search"
+                value={completedTaskSearch}
+                onChange={(event) => setCompletedTaskSearch(event.target.value)}
+                className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                placeholder="Search completed tasks"
+              />
+            </label>
+            <label className="block">
+              <span className="sr-only">Filter completed tasks by tag</span>
+              <select
+                value={completedTaskTagFilter}
+                onChange={(event) =>
+                  setCompletedTaskTagFilter(event.target.value)
+                }
+                className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30 md:w-44"
+              >
+                <option value="">Search by tag</option>
+                {completedTaskTags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-5 max-h-[18rem] space-y-3 overflow-y-auto pr-1">
+            {!isLoadingTasks &&
+            completedTaskOptions.length > 0 &&
+            !hasCompletedTaskLookup ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-5 text-center">
+                <p className="font-semibold">Search to add completed tasks</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Use the search bar or choose a tag to find other completed
+                  tasks for this report.
+                </p>
+              </div>
+            ) : null}
+
+            {!isLoadingTasks &&
+            hasCompletedTaskLookup &&
+            filteredCompletedTaskOptions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-5 text-center">
+                <p className="font-semibold">No matching tasks</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Try a different completed task title or tag.
+                </p>
+              </div>
+            ) : null}
+
+            {!isLoadingTasks && completedTaskOptions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-5 text-center">
+                <p className="font-semibold">No completed tasks yet</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Completed tasks will show up here once they exist.
+                </p>
+              </div>
+            ) : null}
+
+            {filteredCompletedTaskOptions.map((task) => (
+              <label
+                key={task.id}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-slate-900/70 p-4 transition hover:border-cyan-300/70"
+              >
+                <input
+                  type="checkbox"
+                  checked={isCompletedTaskIncluded(task)}
+                  onChange={() => toggleCompletedTask(task)}
+                  className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-300"
+                />
+                <span>
+                  <span className="block font-semibold text-white">
+                    {task.title}
+                  </span>
+                  <span className="mt-1 block text-sm text-slate-300">
+                    {getTaskTagName(task)} - Completed{' '}
+                    {formatDate(task.completed_at)}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
 
         <div className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
