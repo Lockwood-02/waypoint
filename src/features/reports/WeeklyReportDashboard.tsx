@@ -8,6 +8,9 @@ type WeeklyReportDashboardProps = {
   onRefreshTasks: () => void
 }
 
+type ReportTemplate = 'weekly-progress' | 'spreadsheet-progress'
+type TaskComments = Record<string, string>
+
 function toDateInputValue(date: Date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -82,7 +85,23 @@ function isTaskCompletedInPeriod(task: Task, startDate: Date, endDate: Date) {
   return completedAt >= startDate && completedAt <= endDate
 }
 
-function ReportTaskCard({ task }: { task: Task }) {
+function getTaskStepsSummary(task: Task) {
+  if (task.task_steps.length === 0) {
+    return 'No checklist steps added.'
+  }
+
+  return task.task_steps
+    .map((step) => `${step.is_completed ? 'Done' : 'Open'}: ${step.title}`)
+    .join('\n')
+}
+
+function ReportTaskCard({
+  task,
+  comment,
+}: {
+  task: Task
+  comment: string
+}) {
   const completedStepCount = getCompletedStepCount(task)
 
   return (
@@ -109,6 +128,17 @@ function ReportTaskCard({ task }: { task: Task }) {
       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-200 report-description">
         {task.description || 'No description added.'}
       </p>
+
+      {comment.trim() ? (
+        <div className="mt-4 rounded-md border border-cyan-300/20 bg-cyan-300/10 p-3 report-comment">
+          <p className="text-xs font-semibold uppercase tracking-wide text-cyan-100 report-section-label">
+            Comment
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-cyan-50 report-description">
+            {comment}
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 report-section-label">
@@ -144,12 +174,155 @@ function ReportTaskCard({ task }: { task: Task }) {
   )
 }
 
+function TaskPickerRow({
+  task,
+  checked,
+  comment,
+  isCommentOpen,
+  onToggleTask,
+  onToggleComment,
+  onCommentChange,
+}: {
+  task: Task
+  checked: boolean
+  comment: string
+  isCommentOpen: boolean
+  onToggleTask: () => void
+  onToggleComment: () => void
+  onCommentChange: (value: string) => void
+}) {
+  const completedStepCount = getCompletedStepCount(task)
+
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4 transition hover:border-cyan-300/70">
+      <div className="flex items-start gap-3">
+        <label className="flex flex-1 cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={onToggleTask}
+            className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-300"
+          />
+          <span>
+            <span className="block font-semibold text-white">
+              {task.title}
+            </span>
+            <span className="mt-1 block text-sm text-slate-300">
+              {task.status === 'Completed'
+                ? `${getTaskTagName(task)} - Completed ${formatDate(
+                    task.completed_at,
+                  )}`
+                : `${getTaskTagName(task)} - ${task.status} - ${completedStepCount}/${task.task_steps.length} steps`}
+            </span>
+          </span>
+        </label>
+        <button
+          type="button"
+          onClick={onToggleComment}
+          className="rounded-md border border-white/15 px-3 py-2 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300"
+        >
+          {comment.trim() ? 'Edit comment' : 'Add comment'}
+        </button>
+      </div>
+
+      {isCommentOpen ? (
+        <label className="mt-3 block">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Report comment
+          </span>
+          <textarea
+            value={comment}
+            onChange={(event) => onCommentChange(event.target.value)}
+            className="mt-2 min-h-24 w-full resize-y rounded-md border border-white/10 bg-slate-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+            placeholder="Add a note for this report."
+          />
+        </label>
+      ) : null}
+    </div>
+  )
+}
+
+function SpreadsheetReportTable({
+  completedTasks,
+  progressTasks,
+  taskComments,
+}: {
+  completedTasks: Task[]
+  progressTasks: Task[]
+  taskComments: TaskComments
+}) {
+  const reportRows = [
+    ...completedTasks.map((task) => ({ section: 'Completed', task })),
+    ...progressTasks.map((task) => ({ section: 'In progress', task })),
+  ]
+
+  return (
+    <div className="mt-6 overflow-x-auto report-table-wrap">
+      <table className="w-full min-w-[48rem] border-collapse text-left text-sm report-table">
+        <thead>
+          <tr>
+            <th className="border border-white/15 bg-cyan-300 px-3 py-2 font-bold text-slate-950">
+              Title
+            </th>
+            <th className="border border-white/15 bg-cyan-300 px-3 py-2 font-bold text-slate-950">
+              Description
+            </th>
+            <th className="border border-white/15 bg-cyan-300 px-3 py-2 font-bold text-slate-950">
+              Steps
+            </th>
+            <th className="border border-white/15 bg-cyan-300 px-3 py-2 font-bold text-slate-950">
+              Comments
+            </th>
+            <th className="border border-white/15 bg-cyan-300 px-3 py-2 font-bold text-slate-950">
+              Status
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {reportRows.length === 0 ? (
+            <tr>
+              <td
+                colSpan={5}
+                className="border border-white/15 bg-slate-900/70 px-3 py-6 text-center text-slate-300 report-table-cell"
+              >
+                No tasks have been added to this report yet.
+              </td>
+            </tr>
+          ) : null}
+
+          {reportRows.map(({ section, task }) => (
+            <tr key={`${section}-${task.id}`}>
+              <td className="align-top border border-white/15 bg-slate-900/70 px-3 py-2 font-semibold text-white report-table-cell">
+                {task.title}
+              </td>
+              <td className="align-top border border-white/15 bg-slate-900/70 px-3 py-2 whitespace-pre-wrap text-slate-200 report-table-cell">
+                {task.description || 'No description added.'}
+              </td>
+              <td className="align-top border border-white/15 bg-slate-900/70 px-3 py-2 whitespace-pre-wrap text-slate-200 report-table-cell">
+                {getTaskStepsSummary(task)}
+              </td>
+              <td className="align-top border border-white/15 bg-slate-900/70 px-3 py-2 whitespace-pre-wrap text-slate-200 report-table-cell">
+                {taskComments[task.id]?.trim() || ''}
+              </td>
+              <td className="align-top border border-white/15 bg-slate-900/70 px-3 py-2 text-slate-200 report-table-cell">
+                {section}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function WeeklyReportDashboard({
   tasks,
   isLoadingTasks,
   tasksError,
   onRefreshTasks,
 }: WeeklyReportDashboardProps) {
+  const [reportTemplate, setReportTemplate] =
+    useState<ReportTemplate>('weekly-progress')
   const [periodStart, setPeriodStart] = useState(() =>
     toDateInputValue(getCurrentWeekStart()),
   )
@@ -167,6 +340,8 @@ export function WeeklyReportDashboard({
   const [completedTaskTagFilter, setCompletedTaskTagFilter] = useState('')
   const [progressTaskSearch, setProgressTaskSearch] = useState('')
   const [progressTaskTagFilter, setProgressTaskTagFilter] = useState('')
+  const [taskComments, setTaskComments] = useState<TaskComments>({})
+  const [openCommentTaskIds, setOpenCommentTaskIds] = useState<string[]>([])
 
   const startDate = useMemo(
     () => parseDateInput(periodStart) ?? getCurrentWeekStart(),
@@ -321,6 +496,53 @@ export function WeeklyReportDashboard({
 
   const periodLabel = `${formatDate(periodStart)} - ${formatDate(periodEnd)}`
   const reportTaskCount = completedTasks.length + progressTasks.length
+  const reportTitle =
+    reportTemplate === 'spreadsheet-progress'
+      ? 'Spreadsheet progress report'
+      : 'Weekly progress summary'
+
+  function updateTaskComment(taskId: string, comment: string) {
+    setTaskComments((currentComments) => ({
+      ...currentComments,
+      [taskId]: comment,
+    }))
+  }
+
+  function toggleTaskComment(taskId: string) {
+    setOpenCommentTaskIds((currentTaskIds) =>
+      currentTaskIds.includes(taskId)
+        ? currentTaskIds.filter((currentTaskId) => currentTaskId !== taskId)
+        : [...currentTaskIds, taskId],
+    )
+  }
+
+  function downloadSpreadsheetCsv() {
+    const reportRows = [
+      ...completedTasks.map((task) => ({ section: 'Completed', task })),
+      ...progressTasks.map((task) => ({ section: 'In progress', task })),
+    ]
+    const headers = ['Title', 'Description', 'Steps', 'Comments', 'Status']
+    const csvRows = reportRows.map(({ section, task }) =>
+      [
+        task.title,
+        task.description || 'No description added.',
+        getTaskStepsSummary(task),
+        taskComments[task.id]?.trim() || '',
+        section,
+      ]
+        .map((value) => `"${value.replaceAll('"', '""')}"`)
+        .join(','),
+    )
+    const csv = [headers.join(','), ...csvRows].join('\n')
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: 'text/csv;charset=utf-8' }),
+    )
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `waypoint-${reportTemplate}-${periodStart}-to-${periodEnd}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 
   function isCompletedTaskIncluded(task: Task) {
     const isInPeriod = isTaskCompletedInPeriod(task, startDate, endDate)
@@ -425,10 +647,16 @@ export function WeeklyReportDashboard({
               Report template
             </span>
             <select
+              value={reportTemplate}
+              onChange={(event) =>
+                setReportTemplate(event.target.value as ReportTemplate)
+              }
               className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
-              defaultValue="weekly-progress"
             >
               <option value="weekly-progress">Weekly progress summary</option>
+              <option value="spreadsheet-progress">
+                Spreadsheet progress report
+              </option>
             </select>
           </label>
 
@@ -457,13 +685,22 @@ export function WeeklyReportDashboard({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="mt-5 w-full rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
-          >
-            Print report
-          </button>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+            >
+              Print report
+            </button>
+            <button
+              type="button"
+              onClick={downloadSpreadsheetCsv}
+              className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+            >
+              Download CSV
+            </button>
+          </div>
         </div>
 
         <div className="rounded-lg border border-white/10 bg-white/[0.06] p-6">
@@ -492,26 +729,18 @@ export function WeeklyReportDashboard({
             ) : null}
 
             {completedTasksInPeriod.map((task) => (
-              <label
+              <TaskPickerRow
                 key={task.id}
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-slate-900/70 p-4 transition hover:border-cyan-300/70"
-              >
-                <input
-                  type="checkbox"
-                  checked={isCompletedTaskIncluded(task)}
-                  onChange={() => toggleCompletedTask(task)}
-                  className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-300"
-                />
-                <span>
-                  <span className="block font-semibold text-white">
-                    {task.title}
-                  </span>
-                  <span className="mt-1 block text-sm text-slate-300">
-                    {getTaskTagName(task)} - Completed{' '}
-                    {formatDate(task.completed_at)}
-                  </span>
-                </span>
-              </label>
+                task={task}
+                checked={isCompletedTaskIncluded(task)}
+                comment={taskComments[task.id] ?? ''}
+                isCommentOpen={openCommentTaskIds.includes(task.id)}
+                onToggleTask={() => toggleCompletedTask(task)}
+                onToggleComment={() => toggleTaskComment(task.id)}
+                onCommentChange={(comment) =>
+                  updateTaskComment(task.id, comment)
+                }
+              />
             ))}
           </div>
 
@@ -579,26 +808,18 @@ export function WeeklyReportDashboard({
             ) : null}
 
             {filteredCompletedTaskOptions.map((task) => (
-              <label
+              <TaskPickerRow
                 key={task.id}
-                className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-slate-900/70 p-4 transition hover:border-cyan-300/70"
-              >
-                <input
-                  type="checkbox"
-                  checked={isCompletedTaskIncluded(task)}
-                  onChange={() => toggleCompletedTask(task)}
-                  className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-300"
-                />
-                <span>
-                  <span className="block font-semibold text-white">
-                    {task.title}
-                  </span>
-                  <span className="mt-1 block text-sm text-slate-300">
-                    {getTaskTagName(task)} - Completed{' '}
-                    {formatDate(task.completed_at)}
-                  </span>
-                </span>
-              </label>
+                task={task}
+                checked={isCompletedTaskIncluded(task)}
+                comment={taskComments[task.id] ?? ''}
+                isCommentOpen={openCommentTaskIds.includes(task.id)}
+                onToggleTask={() => toggleCompletedTask(task)}
+                onToggleComment={() => toggleTaskComment(task.id)}
+                onCommentChange={(comment) =>
+                  updateTaskComment(task.id, comment)
+                }
+              />
             ))}
           </div>
         </div>
@@ -678,32 +899,20 @@ export function WeeklyReportDashboard({
               </div>
             ) : null}
 
-            {filteredProgressTaskOptions.map((task) => {
-              const completedStepCount = getCompletedStepCount(task)
-
-              return (
-                <label
+            {filteredProgressTaskOptions.map((task) => (
+                <TaskPickerRow
                   key={task.id}
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-white/10 bg-slate-900/70 p-4 transition hover:border-cyan-300/70"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedProgressTaskIds.includes(task.id)}
-                    onChange={() => toggleProgressTask(task.id)}
-                    className="mt-1 h-4 w-4 rounded border-white/20 bg-slate-900 accent-cyan-300"
-                  />
-                  <span>
-                    <span className="block font-semibold text-white">
-                      {task.title}
-                    </span>
-                    <span className="mt-1 block text-sm text-slate-300">
-                      {getTaskTagName(task)} - {task.status} -{' '}
-                      {completedStepCount}/{task.task_steps.length} steps
-                    </span>
-                  </span>
-                </label>
-              )
-            })}
+                  task={task}
+                  checked={selectedProgressTaskIds.includes(task.id)}
+                  comment={taskComments[task.id] ?? ''}
+                  isCommentOpen={openCommentTaskIds.includes(task.id)}
+                  onToggleTask={() => toggleProgressTask(task.id)}
+                  onToggleComment={() => toggleTaskComment(task.id)}
+                  onCommentChange={(comment) =>
+                    updateTaskComment(task.id, comment)
+                  }
+                />
+            ))}
           </div>
         </div>
       </section>
@@ -715,7 +924,7 @@ export function WeeklyReportDashboard({
               Waypoint report
             </p>
             <h2 className="mt-2 text-2xl font-bold text-white report-title">
-              Weekly progress summary
+              {reportTitle}
             </h2>
             <p className="mt-2 text-sm text-slate-300 report-period">
               {periodLabel}
@@ -731,6 +940,13 @@ export function WeeklyReportDashboard({
           </div>
         </div>
 
+        {reportTemplate === 'spreadsheet-progress' ? (
+          <SpreadsheetReportTable
+            completedTasks={completedTasks}
+            progressTasks={progressTasks}
+            taskComments={taskComments}
+          />
+        ) : (
         <div className="mt-6 space-y-6">
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -750,7 +966,11 @@ export function WeeklyReportDashboard({
               ) : null}
 
               {completedTasks.map((task) => (
-                <ReportTaskCard key={task.id} task={task} />
+                <ReportTaskCard
+                  key={task.id}
+                  task={task}
+                  comment={taskComments[task.id] ?? ''}
+                />
               ))}
             </div>
           </section>
@@ -773,11 +993,16 @@ export function WeeklyReportDashboard({
               ) : null}
 
               {progressTasks.map((task) => (
-                <ReportTaskCard key={task.id} task={task} />
+                <ReportTaskCard
+                  key={task.id}
+                  task={task}
+                  comment={taskComments[task.id] ?? ''}
+                />
               ))}
             </div>
           </section>
         </div>
+        )}
       </section>
     </div>
   )

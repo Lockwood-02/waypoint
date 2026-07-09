@@ -28,6 +28,9 @@
   .report-preview article,
   .report-preview p,
   .report-preview span,
+  .report-preview table,
+  .report-preview th,
+  .report-preview td,
   .report-preview h2,
   .report-preview h3 {
     color: #0f172a;
@@ -35,10 +38,24 @@
 
   .report-task-card,
   .report-empty,
-  .report-summary {
+  .report-summary,
+  .report-table,
+  .report-table tr {
     break-inside: avoid;
+  }
+
+  .report-task-card,
+  .report-empty,
+  .report-summary,
+  .report-table-cell {
     border-color: #cbd5e1;
     background: white;
+  }
+
+  .report-table th {
+    border-color: #94a3b8;
+    background: #e0f2fe;
+    color: #0f172a;
   }
 
   .report-eyebrow,
