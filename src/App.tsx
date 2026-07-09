@@ -21,9 +21,11 @@ import {
   type Task,
   type TaskTag,
 } from './features/tasks/taskService'
+import { WeeklyReportDashboard } from './features/reports/WeeklyReportDashboard'
 import { supabase } from './lib/supabaseClient'
 
 type AuthMode = 'login' | 'signup'
+type ActiveDashboard = 'tasks' | 'weekly-report'
 
 type AuthState = {
   displayName: string
@@ -146,6 +148,8 @@ function App() {
   const [profileActionMessage, setProfileActionMessage] = useState('')
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [ownedShopItemIds, setOwnedShopItemIds] = useState<string[]>([])
+  const [activeDashboard, setActiveDashboard] =
+    useState<ActiveDashboard>('tasks')
 
   function clearSignedInState() {
     setProfile(null)
@@ -165,6 +169,7 @@ function App() {
     setProfileActionMessage('')
     setIsUpdatingProfile(false)
     setOwnedShopItemIds([])
+    setActiveDashboard('tasks')
   }
 
   useEffect(() => {
@@ -737,9 +742,30 @@ function App() {
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
                 Waypoint
               </p>
-              <h1 className="mt-2 text-3xl font-bold text-white">
-                Task dashboard
-              </h1>
+              <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveDashboard('tasks')}
+                  className={`text-left font-bold transition hover:text-cyan-100 ${
+                    activeDashboard === 'tasks'
+                      ? 'text-3xl text-white'
+                      : 'text-lg text-slate-400'
+                  }`}
+                >
+                  Task dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDashboard('weekly-report')}
+                  className={`text-left font-bold transition hover:text-cyan-100 ${
+                    activeDashboard === 'weekly-report'
+                      ? 'text-3xl text-white'
+                      : 'text-lg text-slate-400'
+                  }`}
+                >
+                  Weekly report dashboard
+                </button>
+              </div>
             </div>
             <button
               type="button"
@@ -750,6 +776,7 @@ function App() {
             </button>
           </nav>
 
+          {activeDashboard === 'tasks' ? (
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
             <aside className="space-y-6">
               <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-cyan-950/40">
@@ -993,6 +1020,14 @@ function App() {
               </div>
             </section>
           </div>
+          ) : (
+            <WeeklyReportDashboard
+              tasks={tasks}
+              isLoadingTasks={isLoadingTasks}
+              tasksError={tasksError}
+              onRefreshTasks={refreshTasks}
+            />
+          )}
         </section>
 
         {isCreateTaskModalOpen ? (

@@ -1,1 +1,48 @@
 @import "tailwindcss";
+
+@media print {
+  body {
+    background: white;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .report-preview,
+  .report-preview * {
+    visibility: visible;
+  }
+
+  .report-preview {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border: 0;
+    background: white;
+    color: #0f172a;
+    box-shadow: none;
+  }
+
+  .report-preview,
+  .report-preview article,
+  .report-preview p,
+  .report-preview span,
+  .report-preview h2,
+  .report-preview h3 {
+    color: #0f172a;
+  }
+
+  .report-task-card,
+  .report-empty,
+  .report-summary {
+    break-inside: avoid;
+    border-color: #cbd5e1;
+    background: white;
+  }
+
+  .report-eyebrow,
+  .report-section-label {
+    color: #0369a1;
+  }
+}
