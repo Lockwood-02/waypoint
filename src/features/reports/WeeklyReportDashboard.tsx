@@ -114,15 +114,11 @@ function buildProjectStatusOutline(
 
   return reportRows
     .map(({ section, task }) => {
-      const statusDetails = [
-        task.status,
-        section === 'Completed' && task.completed_at
-          ? `Completed ${formatDate(task.completed_at)}`
-          : null,
-        task.description?.trim() || null,
-      ]
-        .filter(Boolean)
-        .join(' - ')
+      const description = task.description?.trim() || 'No description added.'
+      const statusDetails =
+        section === 'Completed' || task.status === 'Completed'
+          ? 'Completed'
+          : task.status
       const nextSteps = task.task_steps.length
         ? task.task_steps
             .map(
@@ -137,6 +133,8 @@ function buildProjectStatusOutline(
         taskComments[task.id]?.trim() || 'No issues, concerns, or comments added.'
 
       return `${task.title}
+          -    Description
+              -    ${description}
           -    Status
               -    ${statusDetails || 'No current status added.'}
           -    Next Steps
