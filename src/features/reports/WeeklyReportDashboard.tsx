@@ -64,6 +64,10 @@ function getTaskTagName(task: Task) {
   return task.task_tag_links[0]?.task_tags?.name ?? 'No tag'
 }
 
+function getTaskTagId(task: Task) {
+  return task.task_tag_links[0]?.task_tags?.id ?? ''
+}
+
 function getCompletedStepCount(task: Task) {
   return task.task_steps.filter((step) => step.is_completed).length
 }
@@ -153,6 +157,8 @@ export function WeeklyReportDashboard({
   const [selectedProgressTaskIds, setSelectedProgressTaskIds] = useState<
     string[]
   >([])
+  const [progressTaskSearch, setProgressTaskSearch] = useState('')
+  const [progressTaskTagFilter, setProgressTaskTagFilter] = useState('')
 
   const startDate = useMemo(
     () => parseDateInput(periodStart) ?? getCurrentWeekStart(),
@@ -184,6 +190,49 @@ export function WeeklyReportDashboard({
         ),
     [tasks],
   )
+
+  const progressTaskTags = useMemo(() => {
+    const tagsById = new Map<string, string>()
+
+    progressTaskOptions.forEach((task) => {
+      const tag = task.task_tag_links[0]?.task_tags
+
+      if (tag) {
+        tagsById.set(tag.id, tag.name)
+      }
+    })
+
+    return [...tagsById.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((firstTag, secondTag) => firstTag.name.localeCompare(secondTag.name))
+  }, [progressTaskOptions])
+
+  const hasProgressTaskLookup =
+    progressTaskSearch.trim().length > 0 || progressTaskTagFilter.length > 0
+
+  const filteredProgressTaskOptions = useMemo(() => {
+    if (!hasProgressTaskLookup) {
+      return []
+    }
+
+    const normalizedSearch = progressTaskSearch.trim().toLowerCase()
+
+    return progressTaskOptions.filter((task) => {
+      const matchesSearch = normalizedSearch
+        ? task.title.toLowerCase().includes(normalizedSearch)
+        : true
+      const matchesTag = progressTaskTagFilter
+        ? getTaskTagId(task) === progressTaskTagFilter
+        : true
+
+      return matchesSearch && matchesTag
+    })
+  }, [
+    hasProgressTaskLookup,
+    progressTaskOptions,
+    progressTaskSearch,
+    progressTaskTagFilter,
+  ])
 
   const progressTasks = useMemo(
     () =>
@@ -309,6 +358,36 @@ export function WeeklyReportDashboard({
             they are not fully completed yet.
           </p>
 
+          <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
+            <label className="block">
+              <span className="sr-only">Search in-progress tasks</span>
+              <input
+                type="search"
+                value={progressTaskSearch}
+                onChange={(event) => setProgressTaskSearch(event.target.value)}
+                className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                placeholder="Search in-progress tasks"
+              />
+            </label>
+            <label className="block">
+              <span className="sr-only">Filter in-progress tasks by tag</span>
+              <select
+                value={progressTaskTagFilter}
+                onChange={(event) =>
+                  setProgressTaskTagFilter(event.target.value)
+                }
+                className="w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2.5 text-sm text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30 md:w-44"
+              >
+                <option value="">Search by tag</option>
+                {progressTaskTags.map((tag) => (
+                  <option key={tag.id} value={tag.id}>
+                    {tag.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <div className="mt-5 max-h-[26rem] space-y-3 overflow-y-auto pr-1">
             {isLoadingTasks ? (
               <p className="text-sm text-slate-300">Loading tasks...</p>
@@ -324,7 +403,30 @@ export function WeeklyReportDashboard({
               </div>
             ) : null}
 
-            {progressTaskOptions.map((task) => {
+            {!isLoadingTasks &&
+            progressTaskOptions.length > 0 &&
+            !hasProgressTaskLookup ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-5 text-center">
+                <p className="font-semibold">Search to add tasks</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Use the search bar or choose a tag to find in-progress tasks
+                  for this report.
+                </p>
+              </div>
+            ) : null}
+
+            {!isLoadingTasks &&
+            hasProgressTaskLookup &&
+            filteredProgressTaskOptions.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-5 text-center">
+                <p className="font-semibold">No matching tasks</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Try a different task title or tag.
+                </p>
+              </div>
+            ) : null}
+
+            {filteredProgressTaskOptions.map((task) => {
               const completedStepCount = getCompletedStepCount(task)
 
               return (
