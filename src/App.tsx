@@ -23,10 +23,11 @@ import {
   type TaskTag,
 } from './features/tasks/taskService'
 import { WeeklyReportDashboard } from './features/reports/WeeklyReportDashboard'
+import { StatsDashboard } from './features/stats/StatsDashboard'
 import { supabase } from './lib/supabaseClient'
 
 type AuthMode = 'login' | 'signup'
-type ActiveDashboard = 'tasks' | 'weekly-report'
+type ActiveDashboard = 'tasks' | 'weekly-report' | 'stats'
 
 type AuthState = {
   displayName: string
@@ -806,6 +807,17 @@ function App() {
                 >
                   Weekly report dashboard
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDashboard('stats')}
+                  className={`text-left font-bold transition hover:text-cyan-100 ${
+                    activeDashboard === 'stats'
+                      ? 'text-3xl text-white'
+                      : 'text-lg text-slate-400'
+                  }`}
+                >
+                  Stats dashboard
+                </button>
               </div>
             </div>
             <button
@@ -1071,8 +1083,15 @@ function App() {
               </div>
             </section>
           </div>
-          ) : (
+          ) : activeDashboard === 'weekly-report' ? (
             <WeeklyReportDashboard
+              tasks={tasks}
+              isLoadingTasks={isLoadingTasks}
+              tasksError={tasksError}
+              onRefreshTasks={refreshTasks}
+            />
+          ) : (
+            <StatsDashboard
               tasks={tasks}
               isLoadingTasks={isLoadingTasks}
               tasksError={tasksError}
