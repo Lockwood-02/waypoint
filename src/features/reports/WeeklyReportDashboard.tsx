@@ -6,6 +6,7 @@ type WeeklyReportDashboardProps = {
   isLoadingTasks: boolean
   tasksError: string
   onRefreshTasks: () => void
+  onSendEmailReport: (report: ReportEmailDraft) => void
 }
 
 type ReportTemplate =
@@ -13,6 +14,14 @@ type ReportTemplate =
   | 'spreadsheet-progress'
   | 'project-status-outline'
 type TaskComments = Record<string, string>
+
+export type ReportEmailDraft = {
+  subject: string
+  body: string
+  title: string
+  periodLabel: string
+  taskCount: number
+}
 
 function toDateInputValue(date: Date) {
   const year = date.getFullYear()
@@ -96,6 +105,144 @@ function getTaskStepsSummary(task: Task) {
   return task.task_steps
     .map((step) => `${step.is_completed ? 'Done' : 'Open'}: ${step.title}`)
     .join('\n')
+}
+
+function buildEmailHeader(reportTitle: string, periodLabel: string) {
+  return [
+    reportTitle,
+    periodLabel,
+    '='.repeat(Math.max(reportTitle.length, periodLabel.length)),
+  ].join('\n')
+}
+
+function buildWeeklyEmailSection(
+  label: string,
+  tasks: Task[],
+  taskComments: TaskComments,
+) {
+  if (tasks.length === 0) {
+    return `${label}\n${'-'.repeat(label.length)}\nNo tasks included.`
+  }
+
+  return `${label}\n${'-'.repeat(label.length)}\n${tasks
+    .map((task) => {
+      const completedStepCount = getCompletedStepCount(task)
+      const comment = taskComments[task.id]?.trim()
+      const steps = task.task_steps.length
+        ? task.task_steps
+            .map(
+              (step) =>
+                `  ${step.is_completed ? '[x]' : '[ ]'} ${step.title}`,
+            )
+            .join('\n')
+        : '  No checklist steps added.'
+
+      return [
+        task.title,
+        `Status: ${task.status}`,
+        task.status === 'Completed'
+          ? ''
+          : `Checklist: ${completedStepCount}/${task.task_steps.length} complete`,
+        '',
+        task.description || 'No description added.',
+        '',
+        'Steps',
+        steps,
+        comment ? `\nComment\n${comment}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+    })
+    .join('\n\n---\n\n')}`
+}
+
+function buildWeeklyProgressEmail({
+  reportTitle,
+  periodLabel,
+  completedTasks,
+  progressTasks,
+  taskComments,
+}: {
+  reportTitle: string
+  periodLabel: string
+  completedTasks: Task[]
+  progressTasks: Task[]
+  taskComments: TaskComments
+}) {
+  return [
+    buildEmailHeader(reportTitle, periodLabel),
+    '',
+    `Completed tasks: ${completedTasks.length}`,
+    `In-progress tasks: ${progressTasks.length}`,
+    `Total included: ${completedTasks.length + progressTasks.length}`,
+    '',
+    buildWeeklyEmailSection('Completed', completedTasks, taskComments),
+    '',
+    buildWeeklyEmailSection('In progress', progressTasks, taskComments),
+  ].join('\n')
+}
+
+function buildSpreadsheetProgressEmail({
+  reportTitle,
+  periodLabel,
+  completedTasks,
+  progressTasks,
+  taskComments,
+}: {
+  reportTitle: string
+  periodLabel: string
+  completedTasks: Task[]
+  progressTasks: Task[]
+  taskComments: TaskComments
+}) {
+  return `${buildEmailHeader(reportTitle, periodLabel)}\n\n${buildProjectStatusOutline(
+    completedTasks,
+    progressTasks,
+    taskComments,
+  )}`
+}
+
+function buildEmailReportBody({
+  reportTitle,
+  periodLabel,
+  completedTasks,
+  progressTasks,
+  taskComments,
+  projectStatusOutlineText,
+  reportTemplate,
+}: {
+  reportTitle: string
+  periodLabel: string
+  completedTasks: Task[]
+  progressTasks: Task[]
+  taskComments: TaskComments
+  projectStatusOutlineText: string
+  reportTemplate: ReportTemplate
+}) {
+  if (reportTemplate === 'project-status-outline') {
+    return `${buildEmailHeader(
+      reportTitle,
+      periodLabel,
+    )}\n\n${projectStatusOutlineText}`
+  }
+
+  if (reportTemplate === 'spreadsheet-progress') {
+    return buildSpreadsheetProgressEmail({
+      reportTitle,
+      periodLabel,
+      completedTasks,
+      progressTasks,
+      taskComments,
+    })
+  }
+
+  return buildWeeklyProgressEmail({
+    reportTitle,
+    periodLabel,
+    completedTasks,
+    progressTasks,
+    taskComments,
+  })
 }
 
 function buildProjectStatusOutline(
@@ -378,6 +525,7 @@ export function WeeklyReportDashboard({
   isLoadingTasks,
   tasksError,
   onRefreshTasks,
+  onSendEmailReport,
 }: WeeklyReportDashboardProps) {
   const [reportTemplate, setReportTemplate] =
     useState<ReportTemplate>('weekly-progress')
@@ -564,6 +712,33 @@ export function WeeklyReportDashboard({
   const projectStatusOutlineText = useMemo(
     () => buildProjectStatusOutline(completedTasks, progressTasks, taskComments),
     [completedTasks, progressTasks, taskComments],
+  )
+  const emailReportDraft = useMemo(
+    () => ({
+      subject: `Waypoint report: ${reportTitle} (${periodLabel})`,
+      body: buildEmailReportBody({
+        reportTitle,
+        periodLabel,
+        completedTasks,
+        progressTasks,
+        taskComments,
+        projectStatusOutlineText,
+        reportTemplate,
+      }),
+      title: reportTitle,
+      periodLabel,
+      taskCount: reportTaskCount,
+    }),
+    [
+      completedTasks,
+      periodLabel,
+      progressTasks,
+      projectStatusOutlineText,
+      reportTaskCount,
+      reportTemplate,
+      reportTitle,
+      taskComments,
+    ],
   )
 
   function updateTaskComment(taskId: string, comment: string) {
@@ -1029,13 +1204,36 @@ export function WeeklyReportDashboard({
               {periodLabel}
             </p>
           </div>
-          <div className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-right report-summary">
-            <p className="text-2xl font-bold text-cyan-100">
-              {reportTaskCount}
-            </p>
-            <p className="text-xs font-semibold uppercase tracking-wide text-cyan-100">
-              Tasks
-            </p>
+          <div className="flex flex-wrap items-start justify-end gap-3">
+            <button
+              type="button"
+              aria-label="Send report to email"
+              title="Send report to email"
+              onClick={() => onSendEmailReport(emailReportDraft)}
+              className="flex min-h-[4.25rem] min-w-[4.75rem] items-center justify-center rounded-lg bg-cyan-300 text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950 print:hidden"
+            >
+              <svg
+                aria-hidden="true"
+                className="h-7 w-7"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <rect height="16" rx="2" width="20" x="2" y="4" />
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+              </svg>
+            </button>
+            <div className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 px-4 py-3 text-right report-summary">
+              <p className="text-2xl font-bold text-cyan-100">
+                {reportTaskCount}
+              </p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-cyan-100">
+                Tasks
+              </p>
+            </div>
           </div>
         </div>
 

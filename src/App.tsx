@@ -22,11 +22,14 @@ import {
   type Task,
   type TaskTag,
 } from './features/tasks/taskService'
-import { WeeklyReportDashboard } from './features/reports/WeeklyReportDashboard'
+import {
+  WeeklyReportDashboard,
+  type ReportEmailDraft,
+} from './features/reports/WeeklyReportDashboard'
 import { supabase } from './lib/supabaseClient'
 
 type AuthMode = 'login' | 'signup'
-type ActiveDashboard = 'tasks' | 'weekly-report'
+type ActiveDashboard = 'tasks' | 'weekly-report' | 'email-report'
 
 type AuthState = {
   displayName: string
@@ -120,6 +123,172 @@ const shopItems: ShopItem[] = [
   },
 ]
 
+function EmailReportDashboard({ report }: { report: ReportEmailDraft | null }) {
+  const [recipientEmail, setRecipientEmail] = useState('')
+  const [senderNote, setSenderNote] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
+
+  const emailBody = useMemo(() => {
+    if (!report) {
+      return ''
+    }
+
+    return senderNote.trim()
+      ? `${senderNote.trim()}\n\n${report.body}`
+      : report.body
+  }, [report, senderNote])
+
+  function openEmailDraft(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!report) {
+      setEmailMessage('Create a report before sending an email.')
+      return
+    }
+
+    const trimmedRecipient = recipientEmail.trim()
+
+    if (!trimmedRecipient) {
+      setEmailMessage('Add a recipient email address.')
+      return
+    }
+
+    const mailtoUrl = `mailto:${encodeURIComponent(
+      trimmedRecipient,
+    )}?subject=${encodeURIComponent(report.subject)}&body=${encodeURIComponent(
+      emailBody,
+    )}`
+
+    window.location.href = mailtoUrl
+    setEmailMessage('Email draft opened.')
+  }
+
+  async function copyEmailBody() {
+    if (!report) {
+      setEmailMessage('Create a report before copying an email.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(emailBody)
+      setEmailMessage('Report email copied.')
+    } catch {
+      setEmailMessage('Clipboard copy was blocked by the browser.')
+    }
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-cyan-950/40">
+        <div>
+          <h2 className="text-xl font-semibold">Send report</h2>
+          {report ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4">
+                <p className="text-lg font-bold text-white">{report.title}</p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Report
+                </p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4">
+                <p className="text-lg font-bold text-white">
+                  {report.periodLabel}
+                </p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Period
+                </p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-slate-900/70 p-4">
+                <p className="text-lg font-bold text-white">
+                  {report.taskCount}
+                </p>
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Tasks
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-lg border border-dashed border-white/15 p-5 text-sm text-slate-300">
+              No report selected yet.
+            </p>
+          )}
+        </div>
+
+        <form className="mt-6 space-y-4" onSubmit={openEmailDraft}>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-200">
+              Recipient email
+            </span>
+            <input
+              type="email"
+              value={recipientEmail}
+              onChange={(event) => {
+                setRecipientEmail(event.target.value)
+                setEmailMessage('')
+              }}
+              className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+              placeholder="recipient@example.com"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-slate-200">
+              Message
+            </span>
+            <textarea
+              value={senderNote}
+              onChange={(event) => {
+                setSenderNote(event.target.value)
+                setEmailMessage('')
+              }}
+              className="mt-2 min-h-32 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+              placeholder="Optional note"
+            />
+          </label>
+
+          {emailMessage ? (
+            <p className="rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+              {emailMessage}
+            </p>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              type="submit"
+              disabled={!report}
+              className="rounded-md bg-cyan-300 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Open email draft
+            </button>
+            <button
+              type="button"
+              disabled={!report}
+              onClick={copyEmailBody}
+              className="rounded-md border border-white/15 px-4 py-3 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Copy email
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section className="min-w-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] p-6">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+            Email preview
+          </p>
+          <h2 className="mt-2 break-words text-2xl font-bold text-white">
+            {report?.subject ?? 'No report selected'}
+          </h2>
+        </div>
+        <pre className="mt-6 max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-lg border border-white/10 bg-slate-900/70 p-4 font-sans text-sm leading-6 text-slate-100">
+          {report ? emailBody : 'Create a report, then choose Send to email.'}
+        </pre>
+      </section>
+    </div>
+  )
+}
+
 function App() {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [formState, setFormState] = useState<AuthState>(initialAuthState)
@@ -151,6 +320,8 @@ function App() {
   const [ownedShopItemIds, setOwnedShopItemIds] = useState<string[]>([])
   const [activeDashboard, setActiveDashboard] =
     useState<ActiveDashboard>('tasks')
+  const [emailReportDraft, setEmailReportDraft] =
+    useState<ReportEmailDraft | null>(null)
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false)
   const [tagActionMessage, setTagActionMessage] = useState('')
   const [deletingTagId, setDeletingTagId] = useState('')
@@ -174,6 +345,7 @@ function App() {
     setIsUpdatingProfile(false)
     setOwnedShopItemIds([])
     setActiveDashboard('tasks')
+    setEmailReportDraft(null)
     setIsManageTagsOpen(false)
     setTagActionMessage('')
     setDeletingTagId('')
@@ -766,6 +938,11 @@ function App() {
     setIsUpdatingTask(false)
   }
 
+  function openEmailReportDashboard(report: ReportEmailDraft) {
+    setEmailReportDraft(report)
+    setActiveDashboard('email-report')
+  }
+
   if (isLoadingSession) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
@@ -805,6 +982,17 @@ function App() {
                   }`}
                 >
                   Weekly report dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDashboard('email-report')}
+                  className={`text-left font-bold transition hover:text-cyan-100 ${
+                    activeDashboard === 'email-report'
+                      ? 'text-3xl text-white'
+                      : 'text-lg text-slate-400'
+                  }`}
+                >
+                  Email dashboard
                 </button>
               </div>
             </div>
@@ -1071,13 +1259,16 @@ function App() {
               </div>
             </section>
           </div>
-          ) : (
+          ) : activeDashboard === 'weekly-report' ? (
             <WeeklyReportDashboard
               tasks={tasks}
               isLoadingTasks={isLoadingTasks}
               tasksError={tasksError}
               onRefreshTasks={refreshTasks}
+              onSendEmailReport={openEmailReportDashboard}
             />
+          ) : (
+            <EmailReportDashboard report={emailReportDraft} />
           )}
         </section>
 
