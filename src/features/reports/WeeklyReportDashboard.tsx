@@ -930,6 +930,36 @@ export function WeeklyReportDashboard({
             they are not fully completed yet.
           </p>
 
+          <div className="mt-5 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Selected for report
+            </p>
+
+            {progressTasks.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-white/15 p-5 text-center">
+                <p className="font-semibold">No in-progress tasks selected</p>
+                <p className="mt-2 text-sm text-slate-300">
+                  Search below and check tasks to keep them in this report.
+                </p>
+              </div>
+            ) : null}
+
+            {progressTasks.map((task) => (
+              <TaskPickerRow
+                key={task.id}
+                task={task}
+                checked
+                comment={taskComments[task.id] ?? ''}
+                isCommentOpen={openCommentTaskIds.includes(task.id)}
+                onToggleTask={() => toggleProgressTask(task.id)}
+                onToggleComment={() => toggleTaskComment(task.id)}
+                onCommentChange={(comment) =>
+                  updateTaskComment(task.id, comment)
+                }
+              />
+            ))}
+          </div>
+
           <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
             <label className="block">
               <span className="sr-only">Search in-progress tasks</span>
@@ -1000,17 +1030,17 @@ export function WeeklyReportDashboard({
 
             {filteredProgressTaskOptions.map((task) => (
               <TaskPickerRow
-                  key={task.id}
-                  task={task}
-                  checked={selectedProgressTaskIds.includes(task.id)}
-                  comment={taskComments[task.id] ?? ''}
-                  isCommentOpen={openCommentTaskIds.includes(task.id)}
-                  onToggleTask={() => toggleProgressTask(task.id)}
-                  onToggleComment={() => toggleTaskComment(task.id)}
-                  onCommentChange={(comment) =>
-                    updateTaskComment(task.id, comment)
-                  }
-                />
+                key={task.id}
+                task={task}
+                checked={selectedProgressTaskIds.includes(task.id)}
+                comment={taskComments[task.id] ?? ''}
+                isCommentOpen={openCommentTaskIds.includes(task.id)}
+                onToggleTask={() => toggleProgressTask(task.id)}
+                onToggleComment={() => toggleTaskComment(task.id)}
+                onCommentChange={(comment) =>
+                  updateTaskComment(task.id, comment)
+                }
+              />
             ))}
           </div>
         </div>
