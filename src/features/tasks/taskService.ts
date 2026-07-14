@@ -39,6 +39,7 @@ export type Task = {
   status: TaskStatus
   points: number
   priority: string | null
+  is_urgent: boolean
   due_date: string | null
   completed_at: string | null
   archived_at: string | null
@@ -55,6 +56,7 @@ export type CreateTaskInput = {
   steps: string[]
   tagId?: string
   newTagName?: string
+  isUrgent: boolean
 }
 
 export type UpdateTaskInput = CreateTaskInput
@@ -72,6 +74,7 @@ export async function getTasks() {
       )
     `,
     )
+    .order('is_urgent', { ascending: false })
     .order('created_at', { ascending: false })
 
   if (response.data) {
@@ -209,6 +212,7 @@ export async function createTask(input: CreateTaskInput) {
       description: input.description ?? '',
       points: input.points,
       status: 'Not Started' satisfies TaskStatus,
+      is_urgent: input.isUrgent,
     })
     .select()
     .single()
@@ -302,6 +306,7 @@ export async function updateTask(taskId: string, input: UpdateTaskInput) {
       title: input.title,
       description: input.description ?? '',
       points: input.points,
+      is_urgent: input.isUrgent,
       updated_at: updatedAt,
     })
     .eq('id', taskId)
@@ -385,6 +390,18 @@ export async function updateTaskStatus(taskId: string, status: TaskStatus) {
     .single()
 }
 
+export async function updateTaskUrgency(taskId: string, isUrgent: boolean) {
+  return supabase
+    .from('tasks')
+    .update({
+      is_urgent: isUrgent,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', taskId)
+    .select()
+    .single()
+}
+
 export async function deleteTask(taskId: string) {
   return supabase.from('tasks').delete().eq('id', taskId)
 }
@@ -399,6 +416,7 @@ export async function completeTask(task: Task, currentTotalPoints: number) {
     .from('tasks')
     .update({
       status: 'Completed' satisfies TaskStatus,
+      is_urgent: false,
       completed_at: completedAt,
       updated_at: completedAt,
     })

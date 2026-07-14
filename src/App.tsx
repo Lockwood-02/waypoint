@@ -18,6 +18,7 @@ import {
   getTaskTags,
   getTasks,
   updateTaskStatus,
+  updateTaskUrgency,
   updateTask,
   type Task,
   type TaskTag,
@@ -42,6 +43,7 @@ type TaskFormState = {
   steps: string[]
   tagId: string
   newTagName: string
+  isUrgent: boolean
 }
 
 type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
@@ -68,6 +70,7 @@ const initialTaskFormState: TaskFormState = {
   steps: [''],
   tagId: '',
   newTagName: '',
+  isUrgent: false,
 }
 
 const shopItems: ShopItem[] = [
@@ -338,7 +341,7 @@ function App() {
         : true
 
       return matchesSearch && matchesCompletion && matchesTag
-    })
+    }).sort((first, second) => Number(second.is_urgent) - Number(first.is_urgent))
   }, [taskCompletionFilter, taskSearch, taskTagFilter, tasks])
 
   const tagUsageCounts = useMemo(() => {
@@ -569,6 +572,7 @@ function App() {
         : [''],
       tagId: currentTag?.id ?? '',
       newTagName: '',
+      isUrgent: task.is_urgent,
     })
     setTaskActionMessage('')
     setSelectedTask(null)
@@ -588,6 +592,7 @@ function App() {
       steps: taskForm.steps,
       tagId: taskForm.newTagName.trim() ? undefined : taskForm.tagId,
       newTagName: taskForm.newTagName,
+      isUrgent: taskForm.isUrgent,
     }
 
     const { data, error } = editingTask
@@ -689,6 +694,24 @@ function App() {
       setTaskActionMessage(`Task completed. You earned ${task.points} points.`)
     }
 
+    setIsUpdatingTask(false)
+  }
+
+  async function handleToggleUrgency(task: Task) {
+    setIsUpdatingTask(true)
+    setTaskActionMessage('')
+
+    const { error } = await updateTaskUrgency(task.id, !task.is_urgent)
+
+    if (error) {
+      setTaskActionMessage(error.message)
+      setIsUpdatingTask(false)
+      return
+    }
+
+    await updateSelectedTask(task.id)
+    await refreshTasks()
+    setTaskActionMessage(task.is_urgent ? 'Urgent mark removed.' : 'Task marked urgent.')
     setIsUpdatingTask(false)
   }
 
@@ -1053,13 +1076,22 @@ function App() {
                       key={task.id}
                       type="button"
                       onClick={() => openTask(task)}
-                      className="w-full rounded-lg border border-white/10 bg-slate-900/70 p-4 text-left transition hover:border-cyan-300/70 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                      className={`w-full rounded-lg bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${
+                        task.is_urgent
+                          ? 'border border-amber-300/70 hover:border-amber-200'
+                          : 'border border-white/10 hover:border-cyan-300/70'
+                      }`}
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <h3 className="font-semibold text-white">
                             {task.title}
                           </h3>
+                          {task.is_urgent ? (
+                            <span className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">
+                              Urgent
+                            </span>
+                          ) : null}
                           <p className="mt-1 line-clamp-2 text-sm text-slate-300">
                             {task.description || 'No description added.'}
                           </p>
@@ -1130,6 +1162,20 @@ function App() {
               </div>
 
               <form className="mt-6 space-y-4" onSubmit={handleCreateTask}>
+                <label className="flex cursor-pointer items-center gap-3 rounded-md border border-amber-300/30 bg-amber-300/10 p-3 text-sm font-semibold text-amber-100">
+                  <input
+                    type="checkbox"
+                    checked={taskForm.isUrgent}
+                    onChange={(event) =>
+                      setTaskForm((current) => ({
+                        ...current,
+                        isUrgent: event.target.checked,
+                      }))
+                    }
+                    className="h-4 w-4 accent-amber-300"
+                  />
+                  Mark this task as urgent
+                </label>
                 <label className="block">
                   <span className="text-sm font-medium text-slate-200">
                     Title
@@ -1509,6 +1555,11 @@ function App() {
                 <span className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-slate-200">
                   {selectedTask.status}
                 </span>
+                {selectedTask.is_urgent ? (
+                  <span className="rounded-full border border-amber-300/50 bg-amber-300/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">
+                    Urgent
+                  </span>
+                ) : null}
                 {selectedTask.task_tag_links[0]?.task_tags ? (
                   <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-100">
                     {selectedTask.task_tag_links[0].task_tags.name}
@@ -1567,6 +1618,16 @@ function App() {
               ) : null}
 
               <div className="mt-6 flex flex-wrap justify-end gap-3">
+                {selectedTask.status !== 'Completed' ? (
+                  <button
+                    type="button"
+                    disabled={isUpdatingTask}
+                    onClick={() => handleToggleUrgency(selectedTask)}
+                    className="rounded-md border border-amber-300/50 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {selectedTask.is_urgent ? 'Remove urgent mark' : 'Mark urgent'}
+                  </button>
+                ) : null}
                 {isConfirmingDeleteTask ? (
                   <>
                     <button
