@@ -19,6 +19,7 @@ import {
   getTasks,
   updateTaskStatus,
   updateTaskUrgency,
+  uncompleteTask,
   updateTask,
   type Task,
   type TaskTag,
@@ -712,6 +713,36 @@ function App() {
     await updateSelectedTask(task.id)
     await refreshTasks()
     setTaskActionMessage(task.is_urgent ? 'Urgent mark removed.' : 'Task marked urgent.')
+    setIsUpdatingTask(false)
+  }
+
+  async function handleUncompleteTask(task: Task) {
+    setIsUpdatingTask(true)
+    setTaskActionMessage('')
+
+    const { data, error } = await uncompleteTask(task.id)
+
+    if (error) {
+      setTaskActionMessage(error.message)
+      setIsUpdatingTask(false)
+      return
+    }
+
+    if (data) {
+      setProfile((currentProfile) =>
+        currentProfile
+          ? { ...currentProfile, total_points: data.total_points }
+          : currentProfile,
+      )
+      await updateSelectedTask(task.id)
+      await refreshTasks()
+      setTaskActionMessage(
+        data.points_removed > 0
+          ? `Task returned to in progress. ${data.points_removed} points were removed.`
+          : 'Task returned to in progress. No points needed to be removed.',
+      )
+    }
+
     setIsUpdatingTask(false)
   }
 
@@ -1627,7 +1658,16 @@ function App() {
                   >
                     {selectedTask.is_urgent ? 'Remove urgent mark' : 'Mark urgent'}
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isUpdatingTask}
+                    onClick={() => handleUncompleteTask(selectedTask)}
+                    className="rounded-md border border-cyan-300/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {isUpdatingTask ? 'Updating...' : 'Return to in progress'}
+                  </button>
+                )}
                 {isConfirmingDeleteTask ? (
                   <>
                     <button

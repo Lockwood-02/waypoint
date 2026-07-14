@@ -457,3 +457,21 @@ export async function completeTask(task: Task, currentTotalPoints: number) {
 
   return { data: profileResponse.data, error: null }
 }
+
+export async function uncompleteTask(taskId: string) {
+  const response = await supabase.rpc('uncomplete_task', {
+    target_task_id: taskId,
+  })
+
+  if (response.error) {
+    return { data: null, error: response.error }
+  }
+
+  return {
+    data: response.data as {
+      total_points: number
+      points_removed: number
+    },
+    error: null,
+  }
+}
