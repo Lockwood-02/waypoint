@@ -26,10 +26,11 @@ import {
 } from './features/tasks/taskService'
 import { WeeklyReportDashboard } from './features/reports/WeeklyReportDashboard'
 import { StatsDashboard } from './features/stats/StatsDashboard'
+import { NotesDashboard } from './features/notes/NotesDashboard'
 import { supabase } from './lib/supabaseClient'
 
 type AuthMode = 'login' | 'signup'
-type ActiveDashboard = 'tasks' | 'weekly-report' | 'stats'
+type ActiveDashboard = 'tasks' | 'notes' | 'weekly-report' | 'stats'
 
 type AuthState = {
   displayName: string
@@ -73,6 +74,8 @@ const initialTaskFormState: TaskFormState = {
   newTagName: '',
   isUrgent: false,
 }
+
+const changelogVersion = 'urgent-notes-uncomplete-2026-07'
 
 const shopItems: ShopItem[] = [
   {
@@ -159,6 +162,7 @@ function App() {
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false)
   const [tagActionMessage, setTagActionMessage] = useState('')
   const [deletingTagId, setDeletingTagId] = useState('')
+  const [isChangelogOpen, setIsChangelogOpen] = useState(false)
 
   function clearSignedInState() {
     setProfile(null)
@@ -182,6 +186,7 @@ function App() {
     setIsManageTagsOpen(false)
     setTagActionMessage('')
     setDeletingTagId('')
+    setIsChangelogOpen(false)
   }
 
   useEffect(() => {
@@ -207,6 +212,25 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!user) return
+
+    const storageKey = `waypoint-changelog:${changelogVersion}:${user.id}`
+    const timer = window.setTimeout(() => {
+      setIsChangelogOpen(localStorage.getItem(storageKey) !== 'dismissed')
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [user])
+
+  function dismissChangelog() {
+    if (user) {
+      const storageKey = `waypoint-changelog:${changelogVersion}:${user.id}`
+      localStorage.setItem(storageKey, 'dismissed')
+    }
+    setIsChangelogOpen(false)
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -841,6 +865,17 @@ function App() {
               <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
                 <button
                   type="button"
+                  onClick={() => setActiveDashboard('notes')}
+                  className={`text-left font-bold transition hover:text-cyan-100 ${
+                    activeDashboard === 'notes'
+                      ? 'text-3xl text-white'
+                      : 'text-lg text-slate-400'
+                  }`}
+                >
+                  Notes
+                </button>
+                <button
+                  type="button"
                   onClick={() => setActiveDashboard('tasks')}
                   className={`text-left font-bold transition hover:text-cyan-100 ${
                     activeDashboard === 'tasks'
@@ -1146,6 +1181,8 @@ function App() {
               </div>
             </section>
           </div>
+          ) : activeDashboard === 'notes' ? (
+            <NotesDashboard />
           ) : activeDashboard === 'weekly-report' ? (
             <WeeklyReportDashboard
               tasks={tasks}
@@ -1162,6 +1199,57 @@ function App() {
             />
           )}
         </section>
+
+        {isChangelogOpen ? (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 px-4 py-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="changelog-modal-title"
+          >
+            <section className="w-full max-w-xl rounded-lg border border-cyan-300/30 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/70">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
+                What&apos;s new
+              </p>
+              <h2 id="changelog-modal-title" className="mt-2 text-3xl font-bold">
+                Waypoint just got more useful
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Here are the latest tools available to help organize your work.
+              </p>
+
+              <div className="mt-6 space-y-3">
+                <article className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
+                  <h3 className="font-bold text-amber-100">Urgent tasks</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-200">
+                    Mark important tasks as urgent to keep them at the top of your task list. The urgent mark is removed when the task is completed.
+                  </p>
+                </article>
+                <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">
+                  <h3 className="font-bold text-cyan-100">Notes</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-200">
+                    Use the new Notes area for assignment details, research, ideas, or any longer information you want near your tasks.
+                  </p>
+                </article>
+                <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">
+                  <h3 className="font-bold text-cyan-100">Return tasks to in progress</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-200">
+                    Reopen a completed task when more work is needed. Its completion points are safely removed and the task returns to In Progress.
+                  </p>
+                </article>
+              </div>
+
+              <button
+                type="button"
+                onClick={dismissChangelog}
+                autoFocus
+                className="mt-6 w-full rounded-md bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+              >
+                Got it — take me to Waypoint
+              </button>
+            </section>
+          </div>
+        ) : null}
 
         {isCreateTaskModalOpen ? (
           <div
