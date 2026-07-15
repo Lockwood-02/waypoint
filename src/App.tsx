@@ -28,140 +28,10 @@ import { WeeklyReportDashboard } from './features/reports/WeeklyReportDashboard'
 import { StatsDashboard } from './features/stats/StatsDashboard'
 import { NotesDashboard } from './features/notes/NotesDashboard'
 import { supabase } from './lib/supabaseClient'
-
-type AuthMode = 'login' | 'signup'
-type ActiveDashboard = 'tasks' | 'notes' | 'weekly-report' | 'stats'
-
-type AuthState = {
-  displayName: string
-  email: string
-  password: string
-}
-
-type TaskFormState = {
-  title: string
-  description: string
-  points: string
-  steps: string[]
-  tagId: string
-  newTagName: string
-  isUrgent: boolean
-}
-
-type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
-type Colorway = 'midnight' | 'forest' | 'violet' | 'sunset'
-
-type ColorwayOption = {
-  id: Colorway
-  label: string
-  description: string
-  swatches: string[]
-}
-
-type ShopItem = {
-  id: string
-  label: string
-  description: string
-  cost: number
-  type: 'avatar_frame' | 'name_color'
-  value: string | null
-}
-
-const initialAuthState: AuthState = {
-  displayName: '',
-  email: '',
-  password: '',
-}
-
-const initialTaskFormState: TaskFormState = {
-  title: '',
-  description: '',
-  points: '10',
-  steps: [''],
-  tagId: '',
-  newTagName: '',
-  isUrgent: false,
-}
-
-const changelogVersion = 'settings-colorways-2026-07'
-
-const colorwayOptions: ColorwayOption[] = [
-  {
-    id: 'midnight',
-    label: 'Midnight',
-    description: 'The original cool blue Waypoint palette.',
-    swatches: ['#020617', '#164e63', '#67e8f9'],
-  },
-  {
-    id: 'forest',
-    label: 'Forest',
-    description: 'Deep evergreen with fresh mint accents.',
-    swatches: ['#07140f', '#14532d', '#6ee7b7'],
-  },
-  {
-    id: 'violet',
-    label: 'Violet',
-    description: 'Rich plum tones with a soft lavender glow.',
-    swatches: ['#0f0718', '#581c87', '#d8b4fe'],
-  },
-  {
-    id: 'sunset',
-    label: 'Sunset',
-    description: 'Warm charcoal with lively coral highlights.',
-    swatches: ['#17100f', '#7f1d1d', '#fda4af'],
-  },
-]
-
-const shopItems: ShopItem[] = [
-  {
-    id: 'frame-cyan',
-    label: 'Cyan Border',
-    description: 'A clean cyan profile image border.',
-    cost: 25,
-    type: 'avatar_frame',
-    value: 'frame-cyan',
-  },
-  {
-    id: 'frame-gold',
-    label: 'Gold Border',
-    description: 'A bright gold profile image border.',
-    cost: 50,
-    type: 'avatar_frame',
-    value: 'frame-gold',
-  },
-  {
-    id: 'frame-fire',
-    label: 'Static Fire Border',
-    description: 'A warm flame-colored border effect.',
-    cost: 75,
-    type: 'avatar_frame',
-    value: 'frame-fire',
-  },
-  {
-    id: 'name-gold',
-    label: 'Gold Name',
-    description: 'Turns your display name gold.',
-    cost: 60,
-    type: 'name_color',
-    value: 'name-gold',
-  },
-  {
-    id: 'name-cyan',
-    label: 'Cyan Name',
-    description: 'Turns your display name cyan.',
-    cost: 40,
-    type: 'name_color',
-    value: 'name-cyan',
-  },
-  {
-    id: 'name-rose',
-    label: 'Rose Name',
-    description: 'Turns your display name rose.',
-    cost: 40,
-    type: 'name_color',
-    value: 'name-rose',
-  },
-]
+import { AppNavigation } from './components/AppNavigation'
+import { SettingsModal } from './components/SettingsModal'
+import { changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
+import type { ActiveDashboard, AuthMode, AuthState, Colorway, ShopItem, TaskCompletionFilter, TaskFormState } from './types/app'
 
 function App() {
   const [authMode, setAuthMode] = useState<AuthMode>('login')
@@ -261,6 +131,12 @@ function App() {
 
     return () => window.clearTimeout(timer)
   }, [user])
+
+  const title = authMode === 'login' ? 'Welcome back' : 'Create your account'
+  const subtitle =
+    authMode === 'login'
+      ? 'Sign in to continue to your Waypoint dashboard.'
+      : 'Start with an email and password, then confirm your account if Supabase email verification is enabled.'
 
   useEffect(() => {
     if (!user) return
@@ -398,12 +274,6 @@ function App() {
       isMounted = false
     }
   }, [user])
-
-  const title = authMode === 'login' ? 'Welcome back' : 'Create your account'
-  const subtitle =
-    authMode === 'login'
-      ? 'Sign in to continue to your Waypoint dashboard.'
-      : 'Start with an email and password, then confirm your account if Supabase email verification is enabled.'
 
   const userRows = useMemo(
     () =>
@@ -931,80 +801,12 @@ function App() {
         className="min-h-screen bg-slate-950 px-6 py-8 text-white"
       >
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-          <nav className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
-                Waypoint
-              </p>
-              <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveDashboard('notes')}
-                  className={`text-left font-bold transition hover:text-cyan-100 ${
-                    activeDashboard === 'notes'
-                      ? 'text-3xl text-white'
-                      : 'text-lg text-slate-400'
-                  }`}
-                >
-                  Notes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveDashboard('tasks')}
-                  className={`text-left font-bold transition hover:text-cyan-100 ${
-                    activeDashboard === 'tasks'
-                      ? 'text-3xl text-white'
-                      : 'text-lg text-slate-400'
-                  }`}
-                >
-                  Task dashboard
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveDashboard('weekly-report')}
-                  className={`text-left font-bold transition hover:text-cyan-100 ${
-                    activeDashboard === 'weekly-report'
-                      ? 'text-3xl text-white'
-                      : 'text-lg text-slate-400'
-                  }`}
-                >
-                  Weekly report dashboard
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveDashboard('stats')}
-                  className={`text-left font-bold transition hover:text-cyan-100 ${
-                    activeDashboard === 'stats'
-                      ? 'text-3xl text-white'
-                      : 'text-lg text-slate-400'
-                  }`}
-                >
-                  Stats dashboard
-                </button>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsSettingsOpen(true)}
-                aria-label="Open settings"
-                title="Settings"
-                className="flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-slate-300 transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.6 3.4 10 2h4l.4 1.4a2 2 0 0 0 2.8 1.2l1.3-.7 2 3.5-1.1.9a2 2 0 0 0 0 3.4l1.1.9-2 3.5-1.3-.7a2 2 0 0 0-2.8 1.2L14 18h-4l-.4-1.4a2 2 0 0 0-2.8-1.2l-1.3.7-2-3.5 1.1-.9a2 2 0 0 0 0-3.4l-1.1-.9 2-3.5 1.3.7a2 2 0 0 0 2.8-1.2Z" />
-                  <circle cx="12" cy="10" r="2.5" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
-              >
-                Sign out
-              </button>
-            </div>
-          </nav>
+          <AppNavigation
+            activeDashboard={activeDashboard}
+            onDashboardChange={setActiveDashboard}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onSignOut={handleSignOut}
+          />
 
           {activeDashboard === 'tasks' ? (
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
@@ -1289,72 +1091,11 @@ function App() {
         </section>
 
         {isSettingsOpen ? (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 px-4 py-8"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="settings-modal-title"
-            onMouseDown={(event) => {
-              if (event.target === event.currentTarget) setIsSettingsOpen(false)
-            }}
-          >
-            <section className="w-full max-w-lg rounded-xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Settings</p>
-                  <h2 id="settings-modal-title" className="mt-2 text-2xl font-bold">Make Waypoint yours</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">Your choices are saved automatically on this device.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsOpen(false)}
-                  aria-label="Close settings"
-                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
-                >
-                  Close
-                </button>
-              </div>
-
-              <fieldset className="mt-7">
-                <legend className="font-bold text-white">Colorway</legend>
-                <p className="mt-1 text-sm text-slate-400">Choose the palette used throughout the application.</p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {colorwayOptions.map((option) => {
-                    const isSelected = colorway === option.id
-                    return (
-                      <label
-                        key={option.id}
-                        className={`cursor-pointer rounded-lg border p-4 transition ${
-                          isSelected
-                            ? 'border-cyan-300 bg-cyan-300/10 ring-1 ring-cyan-300'
-                            : 'border-white/10 bg-white/[0.04] hover:border-white/25'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="colorway"
-                          value={option.id}
-                          checked={isSelected}
-                          onChange={() => selectColorway(option.id)}
-                          className="sr-only"
-                        />
-                        <span className="flex items-center justify-between gap-3">
-                          <span className="font-bold">{option.label}</span>
-                          <span className="flex -space-x-1" aria-hidden="true">
-                            {option.swatches.map((swatch) => (
-                              <span key={swatch} className="h-5 w-5 rounded-full border-2 border-slate-950" style={{ backgroundColor: swatch }} />
-                            ))}
-                          </span>
-                        </span>
-                        <span className="mt-2 block text-sm leading-5 text-slate-300">{option.description}</span>
-                        {isSelected ? <span className="mt-3 block text-xs font-bold uppercase tracking-wider text-cyan-300">Selected</span> : null}
-                      </label>
-                    )
-                  })}
-                </div>
-              </fieldset>
-            </section>
-          </div>
+          <SettingsModal
+            colorway={colorway}
+            onSelectColorway={selectColorway}
+            onClose={() => setIsSettingsOpen(false)}
+          />
         ) : null}
 
         {isChangelogOpen ? (
