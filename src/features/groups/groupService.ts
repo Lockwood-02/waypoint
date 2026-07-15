@@ -45,6 +45,8 @@ export type GroupTaskStep = {
   is_completed: boolean
   position: number
   assigned_to: string | null
+  completed_by?: string | null
+  completed_at?: string | null
   created_at: string
 }
 
