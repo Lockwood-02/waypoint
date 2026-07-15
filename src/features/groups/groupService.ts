@@ -34,6 +34,8 @@ export type GroupMember = {
   display_name: string
   role: GroupRole
   selected_name_color: string | null
+  avatar_url: string | null
+  selected_avatar_frame: string | null
 }
 
 export type GroupTaskStep = {
