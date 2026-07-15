@@ -10,6 +10,7 @@ type AppNavigationProps = {
 const dashboardLinks: { id: ActiveDashboard; label: string }[] = [
   { id: 'notes', label: 'Notes' },
   { id: 'tasks', label: 'Task dashboard' },
+  { id: 'groups', label: 'Groups' },
   { id: 'weekly-report', label: 'Weekly report dashboard' },
   { id: 'stats', label: 'Stats dashboard' },
 ]

@@ -1,5 +1,7 @@
 import type { AuthState, ColorwayOption, ShopItem, TaskFormState } from '../types/app'
 
+export const publicAppUrl = import.meta.env.VITE_APP_URL?.trim() ?? ''
+
 export const initialAuthState: AuthState = {
   displayName: '',
   email: '',
