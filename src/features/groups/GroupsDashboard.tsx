@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import {
   createGroup,
+  createGroupMessage,
   createGroupTask,
   deleteGroupTask,
   getGroups,
   getGroupMembers,
+  getGroupMessages,
   getGroupTasks,
   joinGroup,
   leaveGroup,
@@ -14,6 +16,7 @@ import {
   updateGroupTaskStepCompletion,
   type Group,
   type GroupMember,
+  type GroupMessage,
   type GroupTask,
 } from './groupService'
 import { GroupTaskFormModal } from './GroupTaskFormModal'
@@ -27,6 +30,10 @@ export function GroupsDashboard() {
   const [selectedGroupId, setSelectedGroupId] = useState('')
   const [tasks, setTasks] = useState<GroupTask[]>([])
   const [members, setMembers] = useState<GroupMember[]>([])
+  const [messages, setMessages] = useState<GroupMessage[]>([])
+  const [activeGroupView, setActiveGroupView] = useState<'tasks' | 'chat'>('tasks')
+  const [messageDraft, setMessageDraft] = useState('')
+  const [isSendingMessage, setIsSendingMessage] = useState(false)
   const [selectedTask, setSelectedTask] = useState<GroupTask | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -45,7 +52,7 @@ export function GroupsDashboard() {
 
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null
   const memberName = (userId: string | null) =>
-    members.find((member) => member.user_id === userId)?.display_name ?? 'Unassigned'
+    members.find((member) => member.user_id === userId)?.display_name ?? (userId ? 'Group member' : 'Unassigned')
 
   const loadGroups = useCallback(async () => {
     setIsLoading(true)
@@ -70,6 +77,12 @@ export function GroupsDashboard() {
     else setMembers(response.data ?? [])
   }, [])
 
+  const loadMessages = useCallback(async (groupId: string) => {
+    const response = await getGroupMessages(groupId)
+    if (response.error) setMessage(errorMessage(response.error))
+    else setMessages(response.data ?? [])
+  }, [])
+
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadGroups() }, 0)
     return () => window.clearTimeout(timer)
@@ -83,6 +96,16 @@ export function GroupsDashboard() {
     }, 0)
     return () => window.clearTimeout(timer)
   }, [selectedGroupId, loadTasks, loadMembers])
+
+  useEffect(() => {
+    if (!selectedGroupId || activeGroupView !== 'chat') return
+    const timer = window.setTimeout(() => { void loadMessages(selectedGroupId) }, 0)
+    const interval = window.setInterval(() => { void loadMessages(selectedGroupId) }, 5000)
+    return () => {
+      window.clearTimeout(timer)
+      window.clearInterval(interval)
+    }
+  }, [selectedGroupId, activeGroupView, loadMessages])
 
   async function handleCreateGroup(event: FormEvent) {
     event.preventDefault()
@@ -157,6 +180,19 @@ export function GroupsDashboard() {
     if (response.data) setSelectedGroupId(response.data as string)
   }
 
+  async function handleSendMessage(event: FormEvent) {
+    event.preventDefault()
+    if (!selectedGroup || !messageDraft.trim()) return
+    setIsSendingMessage(true)
+    const response = await createGroupMessage(selectedGroup.id, messageDraft)
+    if (response.error) setMessage(errorMessage(response.error))
+    else {
+      setMessageDraft('')
+      await loadMessages(selectedGroup.id)
+    }
+    setIsSendingMessage(false)
+  }
+
   async function copyInviteCode() {
     if (!selectedGroup) return
     await navigator.clipboard.writeText(selectedGroup.invite_code)
@@ -202,11 +238,24 @@ export function GroupsDashboard() {
         <div className="p-5 md:p-7">
           {selectedGroup ? <>
             <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="text-2xl font-bold">{selectedGroup.name}</h2><span className="rounded-full border border-white/15 px-2 py-1 text-xs capitalize text-slate-300">{selectedGroup.role}</span></div><p className="mt-2 text-sm text-slate-300">{selectedGroup.description || 'A shared place for your team’s tasks.'}</p></div><div className="flex flex-wrap gap-2"><button onClick={copyInviteCode} className="rounded-md border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-cyan-100 hover:border-cyan-200">Copy invite code</button>{selectedGroup.role === 'owner' ? <button onClick={rotateInvite} className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 hover:text-white">Reset code</button> : <button onClick={handleLeave} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20">Leave</button>}</div></div>
-            <div className="mt-7 flex items-center justify-between"><h3 className="text-lg font-semibold">Group tasks</h3><button onClick={openCreateTask} className="rounded-md bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">Add task</button></div>
-            <div className="mt-4 max-h-[25rem] space-y-3 overflow-y-auto pr-1">
-              {tasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-6 text-center"><p className="font-semibold">No shared tasks yet</p><p className="mt-2 text-sm text-slate-300">Add the group’s first task and assign checklist steps.</p></div> : null}
-              {tasks.map((task) => <button type="button" key={task.id} onClick={() => setSelectedTask(task)} className={`w-full rounded-lg bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent ? 'border border-amber-300/70 hover:border-amber-200' : 'border border-white/10 hover:border-cyan-300/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-semibold text-white">{task.title}</h4>{task.is_urgent ? <span className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">Urgent</span> : null}<p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">{task.points} pts</span></div><div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-300"><span>{task.status}</span><span>{task.group_task_steps.length ? `${task.group_task_steps.filter((step) => step.is_completed).length}/${task.group_task_steps.length} steps` : 'No steps'}</span></div></button>)}
+            <div className="mt-6 flex gap-2 border-b border-white/10 pb-3">
+              <button type="button" onClick={() => setActiveGroupView('tasks')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'tasks' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Tasks</button>
+              <button type="button" onClick={() => setActiveGroupView('chat')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'chat' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Chat</button>
             </div>
+
+            {activeGroupView === 'tasks' ? <>
+              <div className="mt-5 flex items-center justify-between"><h3 className="text-lg font-semibold">Group tasks</h3><button onClick={openCreateTask} className="rounded-md bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">Add task</button></div>
+              <div className="mt-4 max-h-[25rem] space-y-3 overflow-y-auto pr-1">
+                {tasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-6 text-center"><p className="font-semibold">No shared tasks yet</p><p className="mt-2 text-sm text-slate-300">Add the group’s first task and assign checklist steps.</p></div> : null}
+                {tasks.map((task) => <button type="button" key={task.id} onClick={() => setSelectedTask(task)} className={`w-full rounded-lg bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent ? 'border border-amber-300/70 hover:border-amber-200' : 'border border-white/10 hover:border-cyan-300/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-semibold text-white">{task.title}</h4>{task.is_urgent ? <span className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">Urgent</span> : null}<p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">{task.points} pts</span></div><div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-300"><span>{task.status}</span><span>{task.group_task_steps.length ? `${task.group_task_steps.filter((step) => step.is_completed).length}/${task.group_task_steps.length} steps` : 'No steps'}</span></div></button>)}
+              </div>
+            </> : <div className="mt-5 flex h-[28rem] flex-col rounded-lg border border-white/10 bg-slate-950/40">
+              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                {messages.length === 0 ? <div className="flex h-full items-center justify-center text-center"><div><p className="font-semibold text-white">No messages yet</p><p className="mt-2 text-sm text-slate-300">Start the conversation with your group.</p></div></div> : null}
+                {messages.map((chatMessage) => <article key={chatMessage.id} className="rounded-lg border border-white/10 bg-slate-900/70 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-cyan-100">{memberName(chatMessage.user_id)}</p><time className="text-xs text-slate-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(chatMessage.created_at))}</time></div><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{chatMessage.body}</p></article>)}
+              </div>
+              <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/10 p-3"><textarea required maxLength={2000} rows={2} value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} placeholder="Write a message to the group…" className="min-h-12 flex-1 resize-none rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /><button type="submit" disabled={isSendingMessage || !messageDraft.trim()} className="self-end rounded-md bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60">{isSendingMessage ? 'Sending…' : 'Send'}</button></form>
+            </div>}
           </> : <div className="flex h-full min-h-80 items-center justify-center text-center"><div><h2 className="text-xl font-semibold">Your shared work starts here</h2><p className="mt-2 text-sm text-slate-300">Create a group, then invite teammates with one link.</p></div></div>}
         </div>
       </div>

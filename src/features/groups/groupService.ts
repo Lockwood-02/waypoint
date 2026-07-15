@@ -50,6 +50,15 @@ export type CreateGroupTaskStepInput = {
   assignedTo: string
 }
 
+export type GroupMessage = {
+  id: string
+  group_id: string
+  user_id: string
+  body: string
+  created_at: string
+  updated_at: string
+}
+
 export async function getGroups() {
   const {
     data: { user },
@@ -128,6 +137,26 @@ export async function getGroupMembers(groupId: string) {
     target_group_id: groupId,
   })
   return { ...response, data: response.data as GroupMember[] | null }
+}
+
+export async function getGroupMessages(groupId: string) {
+  const response = await supabase
+    .from('group_messages')
+    .select('*')
+    .eq('group_id', groupId)
+    .order('created_at', { ascending: true })
+    .limit(200)
+  return { ...response, data: response.data as GroupMessage[] | null }
+}
+
+export async function createGroupMessage(groupId: string, body: string) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { data: null, error: userError ?? new Error('Not logged in') }
+  return supabase.from('group_messages').insert({
+    group_id: groupId,
+    user_id: user.id,
+    body: body.trim(),
+  }).select().single()
 }
 
 export async function createGroupTask(groupId: string, title: string, description: string, points: number, isUrgent: boolean, steps: CreateGroupTaskStepInput[]) {
