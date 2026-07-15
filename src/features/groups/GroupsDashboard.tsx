@@ -54,6 +54,14 @@ export function GroupsDashboard() {
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null
   const memberName = (userId: string | null) =>
     members.find((member) => member.user_id === userId)?.display_name ?? (userId ? 'Group member' : 'Unassigned')
+  const memberNameClass = (userId: string) => {
+    switch (members.find((member) => member.user_id === userId)?.selected_name_color) {
+      case 'name-gold': return 'text-amber-200'
+      case 'name-cyan': return 'text-cyan-200'
+      case 'name-rose': return 'text-rose-200'
+      default: return 'text-white'
+    }
+  }
 
   const loadGroups = useCallback(async () => {
     setIsLoading(true)
@@ -250,7 +258,7 @@ export function GroupsDashboard() {
                 {tasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-6 text-center"><p className="font-semibold">No shared tasks yet</p><p className="mt-2 text-sm text-slate-300">Add the group’s first task and assign checklist steps.</p></div> : null}
                 {tasks.map((task) => <button type="button" key={task.id} onClick={() => setSelectedTask(task)} className={`w-full rounded-lg bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent ? 'border border-amber-300/70 hover:border-amber-200' : 'border border-white/10 hover:border-cyan-300/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-semibold text-white">{task.title}</h4>{task.is_urgent ? <span className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">Urgent</span> : null}<p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">{task.points} pts</span></div><div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-300"><span>{task.status}</span><span>{task.group_task_steps.length ? `${task.group_task_steps.filter((step) => step.is_completed).length}/${task.group_task_steps.length} steps` : 'No steps'}</span></div></button>)}
               </div>
-            </> : <GroupChatView messages={messages} messageDraft={messageDraft} isSending={isSendingMessage} memberName={(userId) => memberName(userId)} onDraftChange={setMessageDraft} onSubmit={handleSendMessage} />}
+            </> : <GroupChatView messages={messages} messageDraft={messageDraft} isSending={isSendingMessage} memberName={(userId) => memberName(userId)} memberNameClass={memberNameClass} onDraftChange={setMessageDraft} onSubmit={handleSendMessage} />}
           </> : <div className="flex h-full min-h-80 items-center justify-center text-center"><div><h2 className="text-xl font-semibold">Your shared work starts here</h2><p className="mt-2 text-sm text-slate-300">Create a group, then invite teammates with one link.</p></div></div>}
         </div>
       </div>

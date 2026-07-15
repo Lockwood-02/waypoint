@@ -6,11 +6,12 @@ type GroupChatViewProps = {
   messageDraft: string
   isSending: boolean
   memberName: (userId: string) => string
+  memberNameClass: (userId: string) => string
   onDraftChange: (value: string) => void
   onSubmit: (event: FormEvent) => void
 }
 
-export function GroupChatView({ messages, messageDraft, isSending, memberName, onDraftChange, onSubmit }: GroupChatViewProps) {
+export function GroupChatView({ messages, messageDraft, isSending, memberName, memberNameClass, onDraftChange, onSubmit }: GroupChatViewProps) {
   const [expandedMessageIds, setExpandedMessageIds] = useState<string[]>([])
 
   function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -35,7 +36,7 @@ export function GroupChatView({ messages, messageDraft, isSending, memberName, o
           const canExpand = message.body.length > 100 || message.body.includes('\n')
           return (
             <article key={message.id} className="rounded-lg border border-white/10 bg-slate-900/70 p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-cyan-100">{memberName(message.user_id)}</p><time className="text-xs text-slate-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(message.created_at))}</time></div>
+              <div className="flex flex-wrap items-center justify-between gap-2"><p className={`text-sm font-semibold ${memberNameClass(message.user_id)}`}>{memberName(message.user_id)}</p><time className="text-xs text-slate-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(message.created_at))}</time></div>
               <p className={`mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200 ${isExpanded ? '' : 'line-clamp-1'}`}>{message.body}</p>
               {canExpand ? <button type="button" onClick={() => toggleExpanded(message.id)} className="mt-1 text-xs font-semibold text-cyan-200 transition hover:text-cyan-100">{isExpanded ? 'Show less' : 'Show more'}</button> : null}
             </article>

@@ -33,6 +33,7 @@ export type GroupMember = {
   user_id: string
   display_name: string
   role: GroupRole
+  selected_name_color: string | null
 }
 
 export type GroupTaskStep = {
