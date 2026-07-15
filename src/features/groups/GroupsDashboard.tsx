@@ -25,6 +25,7 @@ import {
 } from './groupService'
 import { GroupTaskFormModal } from './GroupTaskFormModal'
 import { GroupChatView } from './GroupChatView'
+import { GroupMembersView } from './GroupMembersView'
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Something went wrong.'
@@ -36,7 +37,7 @@ export function GroupsDashboard() {
   const [tasks, setTasks] = useState<GroupTask[]>([])
   const [members, setMembers] = useState<GroupMember[]>([])
   const [messages, setMessages] = useState<GroupMessage[]>([])
-  const [activeGroupView, setActiveGroupView] = useState<'tasks' | 'chat'>('tasks')
+  const [activeGroupView, setActiveGroupView] = useState<'tasks' | 'chat' | 'members'>('tasks')
   const [messageDraft, setMessageDraft] = useState('')
   const [isSendingMessage, setIsSendingMessage] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
@@ -283,7 +284,17 @@ export function GroupsDashboard() {
           <div className="mt-3 space-y-2">
             {isLoading ? <p className="px-2 text-sm text-slate-400">Loading groups…</p> : null}
             {!isLoading && groups.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-4 text-sm text-slate-300"><p className="font-semibold text-white">No groups yet</p><p className="mt-2">Create one or open an invite link to begin.</p></div> : null}
-            {groups.map((group) => <button key={group.id} onClick={() => setSelectedGroupId(group.id)} className={`w-full rounded-lg border p-3 text-left transition ${selectedGroupId === group.id ? 'border-cyan-300/50 bg-cyan-300/10' : 'border-transparent hover:bg-white/[0.05]'}`}><span className="block font-semibold text-white">{group.name}</span><span className="mt-1 block text-xs text-slate-400">{group.member_count} member{group.member_count === 1 ? '' : 's'}</span></button>)}
+            {groups.map((group) => (
+              <div key={group.id} className={`flex min-w-0 items-stretch rounded-lg border transition ${selectedGroupId === group.id ? 'border-cyan-300/50 bg-cyan-300/10' : 'border-transparent hover:bg-white/[0.05]'}`}>
+                <button type="button" onClick={() => { setSelectedGroupId(group.id); setActiveGroupView('tasks') }} className="min-w-0 flex-1 p-3 text-left">
+                  <span className="block truncate font-semibold text-white" title={group.name}>{group.name}</span>
+                  <span className="mt-1 block text-xs text-slate-400">{group.member_count} member{group.member_count === 1 ? '' : 's'}</span>
+                </button>
+                <button type="button" onClick={() => { setSelectedGroupId(group.id); setActiveGroupView('members') }} aria-label={`View members of ${group.name}`} title="View group members" className={`m-2 ml-0 flex w-9 shrink-0 items-center justify-center rounded-md border transition ${selectedGroupId === group.id && activeGroupView === 'members' ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-white/15 text-slate-300 hover:border-cyan-300 hover:text-cyan-200'}`}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                </button>
+              </div>
+            ))}
           </div>
         </aside>
 
@@ -293,6 +304,7 @@ export function GroupsDashboard() {
             <div className="mt-6 flex gap-2 border-b border-white/10 pb-3">
               <button type="button" onClick={() => setActiveGroupView('tasks')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'tasks' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Tasks</button>
               <button type="button" onClick={() => setActiveGroupView('chat')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'chat' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Chat</button>
+              <button type="button" onClick={() => setActiveGroupView('members')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'members' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Members</button>
             </div>
 
             {activeGroupView === 'tasks' ? <>
@@ -301,7 +313,7 @@ export function GroupsDashboard() {
                 {tasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-6 text-center"><p className="font-semibold">No shared tasks yet</p><p className="mt-2 text-sm text-slate-300">Add the group’s first task and assign checklist steps.</p></div> : null}
                 {tasks.map((task) => <button type="button" key={task.id} onClick={() => setSelectedTask(task)} className={`w-full rounded-lg bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent ? 'border border-amber-300/70 hover:border-amber-200' : 'border border-white/10 hover:border-cyan-300/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-semibold text-white">{task.title}</h4>{task.is_urgent ? <span className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">Urgent</span> : null}<p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">{task.points} pts</span></div><div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-300"><span>{task.status}</span><span>{task.group_task_steps.length ? `${task.group_task_steps.filter((step) => step.is_completed).length}/${task.group_task_steps.length} steps` : 'No steps'}</span></div></button>)}
               </div>
-            </> : <GroupChatView messages={messages} messageDraft={messageDraft} isSending={isSendingMessage} currentUserId={currentUserId} memberName={(userId) => memberName(userId)} memberNameClass={memberNameClass} onDraftChange={setMessageDraft} onSubmit={handleSendMessage} onEditMessage={handleEditMessage} onDeleteMessage={handleDeleteMessage} />}
+            </> : activeGroupView === 'chat' ? <GroupChatView messages={messages} messageDraft={messageDraft} isSending={isSendingMessage} currentUserId={currentUserId} memberName={(userId) => memberName(userId)} memberNameClass={memberNameClass} onDraftChange={setMessageDraft} onSubmit={handleSendMessage} onEditMessage={handleEditMessage} onDeleteMessage={handleDeleteMessage} /> : <GroupMembersView members={members} nameClass={memberNameClass} />}
           </> : <div className="flex h-full min-h-80 items-center justify-center text-center"><div><h2 className="text-xl font-semibold">Your shared work starts here</h2><p className="mt-2 text-sm text-slate-300">Create a group, then invite teammates with one link.</p></div></div>}
         </div>
       </div>
