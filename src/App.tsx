@@ -472,6 +472,37 @@ function App() {
     setIsUpdatingProfile(false)
   }
 
+  async function handleToggleProfileFlare(item: ShopItem) {
+    if (!user || !profile) return
+
+    const currentlyEquipped =
+      item.type === 'name_color'
+        ? profile.selected_name_color === item.value
+        : profile.selected_avatar_frame === item.value
+
+    setIsUpdatingProfile(true)
+    setProfileActionMessage('')
+
+    const { data, error } = await updateProfileCosmetics(user.id, {
+      selected_name_color:
+        item.type === 'name_color'
+          ? currentlyEquipped ? null : item.value
+          : profile.selected_name_color,
+      selected_avatar_frame:
+        item.type === 'avatar_frame'
+          ? currentlyEquipped ? null : item.value
+          : profile.selected_avatar_frame,
+    })
+
+    if (error) setProfileActionMessage(error.message)
+    else if (data) {
+      setProfile(data as Profile)
+      setProfileActionMessage(`${item.label} ${currentlyEquipped ? 'unequipped' : 'equipped'}.`)
+    }
+
+    setIsUpdatingProfile(false)
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setIsSubmitting(true)
@@ -805,7 +836,10 @@ function App() {
           <AppNavigation
             activeDashboard={activeDashboard}
             onDashboardChange={setActiveDashboard}
-            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenSettings={() => {
+              setProfileActionMessage('')
+              setIsSettingsOpen(true)
+            }}
             onSignOut={handleSignOut}
           />
 
@@ -1093,10 +1127,19 @@ function App() {
           )}
         </section>
 
-        {isSettingsOpen ? (
+        {isSettingsOpen && profile ? (
           <SettingsModal
             colorway={colorway}
+            profile={profile}
+            ownedFlareItems={shopItems.filter((item) =>
+              ownedShopItemIds.includes(item.id) ||
+              profile?.selected_avatar_frame === item.value ||
+              profile?.selected_name_color === item.value,
+            )}
+            isUpdatingProfile={isUpdatingProfile}
+            flareMessage={profileActionMessage}
             onSelectColorway={selectColorway}
+            onToggleFlare={handleToggleProfileFlare}
             onClose={() => setIsSettingsOpen(false)}
           />
         ) : null}
