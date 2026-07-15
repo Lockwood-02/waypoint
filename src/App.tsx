@@ -27,6 +27,7 @@ import {
 import { WeeklyReportDashboard } from './features/reports/WeeklyReportDashboard'
 import { StatsDashboard } from './features/stats/StatsDashboard'
 import { NotesDashboard } from './features/notes/NotesDashboard'
+import { GroupsDashboard } from './features/groups/GroupsDashboard'
 import { supabase } from './lib/supabaseClient'
 import { AppNavigation } from './components/AppNavigation'
 import { SettingsModal } from './components/SettingsModal'
@@ -1071,6 +1072,8 @@ function App() {
               </div>
             </section>
           </div>
+          ) : activeDashboard === 'groups' ? (
+            <GroupsDashboard />
           ) : activeDashboard === 'notes' ? (
             <NotesDashboard />
           ) : activeDashboard === 'weekly-report' ? (
