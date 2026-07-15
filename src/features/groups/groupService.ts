@@ -8,7 +8,7 @@ export type Group = {
   name: string
   description: string | null
   owner_id: string
-  invite_token: string
+  invite_code: string
   created_at: string
   updated_at: string
   member_count: number
@@ -29,26 +29,38 @@ export type GroupTask = {
 }
 
 export async function getGroups() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { data: null, error: userError ?? new Error('Not logged in') }
+  }
+
   const response = await supabase
     .from('group_members')
     .select('role, groups(*, group_members(count))')
+    .eq('user_id', user.id)
     .order('joined_at', { ascending: true })
 
   if (response.error || !response.data) return { data: null, error: response.error }
 
-  const groups = response.data.flatMap((row) => {
+  const groupsById = new Map<string, Group>()
+
+  response.data.forEach((row) => {
     const value = row.groups as unknown as (Omit<Group, 'role' | 'member_count'> & {
       group_members?: { count: number }[]
     }) | null
-    if (!value) return []
-    return [{
+    if (!value) return
+    groupsById.set(value.id, {
       ...value,
       role: row.role as GroupRole,
       member_count: value.group_members?.[0]?.count ?? 0,
-    }]
+    })
   })
 
-  return { data: groups, error: null }
+  return { data: [...groupsById.values()], error: null }
 }
 
 export async function createGroup(name: string, description: string) {
@@ -61,8 +73,8 @@ export async function createGroup(name: string, description: string) {
   })
 }
 
-export async function joinGroup(inviteToken: string) {
-  return supabase.rpc('join_group_by_invite', { supplied_token: inviteToken })
+export async function joinGroup(inviteCode: string) {
+  return supabase.rpc('join_group_by_invite', { supplied_code: inviteCode.trim().toUpperCase() })
 }
 
 export async function rotateGroupInvite(groupId: string) {
