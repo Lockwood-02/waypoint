@@ -20,6 +20,7 @@ import {
   type GroupTask,
 } from './groupService'
 import { GroupTaskFormModal } from './GroupTaskFormModal'
+import { GroupChatView } from './GroupChatView'
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Something went wrong.'
@@ -249,13 +250,7 @@ export function GroupsDashboard() {
                 {tasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-6 text-center"><p className="font-semibold">No shared tasks yet</p><p className="mt-2 text-sm text-slate-300">Add the group’s first task and assign checklist steps.</p></div> : null}
                 {tasks.map((task) => <button type="button" key={task.id} onClick={() => setSelectedTask(task)} className={`w-full rounded-lg bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent ? 'border border-amber-300/70 hover:border-amber-200' : 'border border-white/10 hover:border-cyan-300/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-semibold text-white">{task.title}</h4>{task.is_urgent ? <span className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">Urgent</span> : null}<p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">{task.points} pts</span></div><div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-300"><span>{task.status}</span><span>{task.group_task_steps.length ? `${task.group_task_steps.filter((step) => step.is_completed).length}/${task.group_task_steps.length} steps` : 'No steps'}</span></div></button>)}
               </div>
-            </> : <div className="mt-5 flex h-[28rem] flex-col rounded-lg border border-white/10 bg-slate-950/40">
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
-                {messages.length === 0 ? <div className="flex h-full items-center justify-center text-center"><div><p className="font-semibold text-white">No messages yet</p><p className="mt-2 text-sm text-slate-300">Start the conversation with your group.</p></div></div> : null}
-                {messages.map((chatMessage) => <article key={chatMessage.id} className="rounded-lg border border-white/10 bg-slate-900/70 p-3"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-cyan-100">{memberName(chatMessage.user_id)}</p><time className="text-xs text-slate-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(chatMessage.created_at))}</time></div><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{chatMessage.body}</p></article>)}
-              </div>
-              <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/10 p-3"><textarea required maxLength={2000} rows={2} value={messageDraft} onChange={(event) => setMessageDraft(event.target.value)} placeholder="Write a message to the group…" className="min-h-12 flex-1 resize-none rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /><button type="submit" disabled={isSendingMessage || !messageDraft.trim()} className="self-end rounded-md bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60">{isSendingMessage ? 'Sending…' : 'Send'}</button></form>
-            </div>}
+            </> : <GroupChatView messages={messages} messageDraft={messageDraft} isSending={isSendingMessage} memberName={(userId) => memberName(userId)} onDraftChange={setMessageDraft} onSubmit={handleSendMessage} />}
           </> : <div className="flex h-full min-h-80 items-center justify-center text-center"><div><h2 className="text-xl font-semibold">Your shared work starts here</h2><p className="mt-2 text-sm text-slate-300">Create a group, then invite teammates with one link.</p></div></div>}
         </div>
       </div>
