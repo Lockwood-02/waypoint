@@ -129,7 +129,7 @@ export function GroupsDashboard() {
     <section>
       {message ? <p className="mb-5 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">{message}</p> : null}
 
-      <div className="grid min-h-[32rem] overflow-hidden rounded-xl border border-white/10 bg-white/[0.03] lg:grid-cols-[18rem_1fr]">
+      <div className="grid min-h-[32rem] overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] shadow-2xl shadow-cyan-950/30 lg:grid-cols-[18rem_1fr]">
         <aside className="border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
           <div className="flex items-center justify-between gap-3 px-2">
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">Your groups</h2>
