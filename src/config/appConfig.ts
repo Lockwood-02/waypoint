@@ -18,7 +18,7 @@ export const initialTaskFormState: TaskFormState = {
   isUrgent: false,
 }
 
-export const changelogVersion = 'settings-colorways-2026-07'
+export const changelogVersion = 'groups-chat-flares-2026-07'
 
 export const colorwayOptions: ColorwayOption[] = [
   { id: 'midnight', label: 'Midnight', description: 'The original cool blue Waypoint palette.', swatches: ['#020617', '#164e63', '#67e8f9'] },

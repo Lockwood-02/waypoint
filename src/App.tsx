@@ -1153,38 +1153,38 @@ function App() {
           >
             <section className="w-full max-w-xl rounded-lg border border-cyan-300/30 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/70">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
-                What&apos;s new
+                What&apos;s new with v0.7!
               </p>
               <h2 id="changelog-modal-title" className="mt-2 text-3xl font-bold">
-                Waypoint just got more useful
+                Waypoint is better together
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Here are the latest tools available to help organize your work.
+                Collaborate with your groups and personalize how you show up.
               </p>
 
               <div className="mt-6 space-y-3">
                 <article className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-4">
-                  <h3 className="font-bold text-cyan-100">Settings and colorways</h3>
+                  <h3 className="font-bold text-cyan-100">Groups and shared tasks</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Make Waypoint yours with Midnight, Forest, Violet, and Sunset colorways. Open the new settings button beside Sign out to switch palettes at any time.
+                    Create a group or join one with an invite code. Group members can build shared tasks, assign checklist steps, and track progress together.
                   </p>
                 </article>
                 <article className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
-                  <h3 className="font-bold text-amber-100">Urgent tasks</h3>
+                  <h3 className="font-bold text-amber-100">Group chat</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Mark important tasks as urgent to keep them at the top of your task list. The urgent mark is removed when the task is completed.
+                    Switch to Chat inside any group to leave messages for your teammates. Press Enter to send, use Shift+Enter for a new line, and expand longer messages when you want to read more.
                   </p>
                 </article>
                 <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">
-                  <h3 className="font-bold text-cyan-100">Notes</h3>
+                  <h3 className="font-bold text-cyan-100">Choose your profile flares</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Use the new Notes area for assignment details, research, ideas, or any longer information you want near your tasks.
+                    Open Settings to equip or unequip name colors and avatar frames you own. Equipped name colors now appear beside your messages in group chat.
                   </p>
                 </article>
                 <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">
-                  <h3 className="font-bold text-cyan-100">Return tasks to in progress</h3>
+                  <h3 className="font-bold text-cyan-100">Your style, your way</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Reopen a completed task when more work is needed. Its completion points are safely removed and the task returns to In Progress.
+                    Point Shop purchases remain yours to switch at any time, and the Midnight, Forest, Violet, and Sunset application colorways are still available in Settings.
                   </p>
                 </article>
               </div>
