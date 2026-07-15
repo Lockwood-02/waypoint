@@ -49,6 +49,14 @@ type TaskFormState = {
 }
 
 type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
+type Colorway = 'midnight' | 'forest' | 'violet' | 'sunset'
+
+type ColorwayOption = {
+  id: Colorway
+  label: string
+  description: string
+  swatches: string[]
+}
 
 type ShopItem = {
   id: string
@@ -75,7 +83,34 @@ const initialTaskFormState: TaskFormState = {
   isUrgent: false,
 }
 
-const changelogVersion = 'urgent-notes-uncomplete-2026-07'
+const changelogVersion = 'settings-colorways-2026-07'
+
+const colorwayOptions: ColorwayOption[] = [
+  {
+    id: 'midnight',
+    label: 'Midnight',
+    description: 'The original cool blue Waypoint palette.',
+    swatches: ['#020617', '#164e63', '#67e8f9'],
+  },
+  {
+    id: 'forest',
+    label: 'Forest',
+    description: 'Deep evergreen with fresh mint accents.',
+    swatches: ['#07140f', '#14532d', '#6ee7b7'],
+  },
+  {
+    id: 'violet',
+    label: 'Violet',
+    description: 'Rich plum tones with a soft lavender glow.',
+    swatches: ['#0f0718', '#581c87', '#d8b4fe'],
+  },
+  {
+    id: 'sunset',
+    label: 'Sunset',
+    description: 'Warm charcoal with lively coral highlights.',
+    swatches: ['#17100f', '#7f1d1d', '#fda4af'],
+  },
+]
 
 const shopItems: ShopItem[] = [
   {
@@ -163,6 +198,8 @@ function App() {
   const [tagActionMessage, setTagActionMessage] = useState('')
   const [deletingTagId, setDeletingTagId] = useState('')
   const [isChangelogOpen, setIsChangelogOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [colorway, setColorway] = useState<Colorway>('midnight')
 
   function clearSignedInState() {
     setProfile(null)
@@ -187,6 +224,7 @@ function App() {
     setTagActionMessage('')
     setDeletingTagId('')
     setIsChangelogOpen(false)
+    setIsSettingsOpen(false)
   }
 
   useEffect(() => {
@@ -223,6 +261,39 @@ function App() {
 
     return () => window.clearTimeout(timer)
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+
+    const savedColorway = localStorage.getItem(`waypoint-colorway:${user.id}`)
+    const timer = window.setTimeout(() => {
+      if (colorwayOptions.some((option) => option.id === savedColorway)) {
+        setColorway(savedColorway as Colorway)
+      } else {
+        setColorway('midnight')
+      }
+    })
+
+    return () => window.clearTimeout(timer)
+  }, [user])
+
+  useEffect(() => {
+    if (!isSettingsOpen) return
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setIsSettingsOpen(false)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isSettingsOpen])
+
+  function selectColorway(nextColorway: Colorway) {
+    setColorway(nextColorway)
+    if (user) {
+      localStorage.setItem(`waypoint-colorway:${user.id}`, nextColorway)
+    }
+  }
 
   function dismissChangelog() {
     if (user) {
@@ -855,7 +926,10 @@ function App() {
 
   if (user) {
     return (
-      <main className="min-h-screen bg-slate-950 px-6 py-8 text-white">
+      <main
+        data-colorway={colorway}
+        className="min-h-screen bg-slate-950 px-6 py-8 text-white"
+      >
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-8">
           <nav className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -909,13 +983,27 @@ function App() {
                 </button>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleSignOut}
-              className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
-            >
-              Sign out
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(true)}
+                aria-label="Open settings"
+                title="Settings"
+                className="flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-slate-300 transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.6 3.4 10 2h4l.4 1.4a2 2 0 0 0 2.8 1.2l1.3-.7 2 3.5-1.1.9a2 2 0 0 0 0 3.4l1.1.9-2 3.5-1.3-.7a2 2 0 0 0-2.8 1.2L14 18h-4l-.4-1.4a2 2 0 0 0-2.8-1.2l-1.3.7-2-3.5 1.1-.9a2 2 0 0 0 0-3.4l-1.1-.9 2-3.5 1.3.7a2 2 0 0 0 2.8-1.2Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+              >
+                Sign out
+              </button>
+            </div>
           </nav>
 
           {activeDashboard === 'tasks' ? (
@@ -1200,6 +1288,75 @@ function App() {
           )}
         </section>
 
+        {isSettingsOpen ? (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 px-4 py-8"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-modal-title"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setIsSettingsOpen(false)
+            }}
+          >
+            <section className="w-full max-w-lg rounded-xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Settings</p>
+                  <h2 id="settings-modal-title" className="mt-2 text-2xl font-bold">Make Waypoint yours</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">Your choices are saved automatically on this device.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen(false)}
+                  aria-label="Close settings"
+                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                >
+                  Close
+                </button>
+              </div>
+
+              <fieldset className="mt-7">
+                <legend className="font-bold text-white">Colorway</legend>
+                <p className="mt-1 text-sm text-slate-400">Choose the palette used throughout the application.</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {colorwayOptions.map((option) => {
+                    const isSelected = colorway === option.id
+                    return (
+                      <label
+                        key={option.id}
+                        className={`cursor-pointer rounded-lg border p-4 transition ${
+                          isSelected
+                            ? 'border-cyan-300 bg-cyan-300/10 ring-1 ring-cyan-300'
+                            : 'border-white/10 bg-white/[0.04] hover:border-white/25'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="colorway"
+                          value={option.id}
+                          checked={isSelected}
+                          onChange={() => selectColorway(option.id)}
+                          className="sr-only"
+                        />
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="font-bold">{option.label}</span>
+                          <span className="flex -space-x-1" aria-hidden="true">
+                            {option.swatches.map((swatch) => (
+                              <span key={swatch} className="h-5 w-5 rounded-full border-2 border-slate-950" style={{ backgroundColor: swatch }} />
+                            ))}
+                          </span>
+                        </span>
+                        <span className="mt-2 block text-sm leading-5 text-slate-300">{option.description}</span>
+                        {isSelected ? <span className="mt-3 block text-xs font-bold uppercase tracking-wider text-cyan-300">Selected</span> : null}
+                      </label>
+                    )
+                  })}
+                </div>
+              </fieldset>
+            </section>
+          </div>
+        ) : null}
+
         {isChangelogOpen ? (
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 px-4 py-8"
@@ -1219,6 +1376,12 @@ function App() {
               </p>
 
               <div className="mt-6 space-y-3">
+                <article className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-4">
+                  <h3 className="font-bold text-cyan-100">Settings and colorways</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-200">
+                    Make Waypoint yours with Midnight, Forest, Violet, and Sunset colorways. Open the new settings button beside Sign out to switch palettes at any time.
+                  </p>
+                </article>
                 <article className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
                   <h3 className="font-bold text-amber-100">Urgent tasks</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">

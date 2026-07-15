@@ -1,5 +1,46 @@
 @import "tailwindcss";
 
+/* Colorways remap the app's existing semantic cyan/slate palette. Keeping the
+   overrides on the signed-in app shell also makes future settings easy to add. */
+[data-colorway="forest"] {
+  --color-cyan-100: #d1fae5;
+  --color-cyan-200: #a7f3d0;
+  --color-cyan-300: #6ee7b7;
+  --color-cyan-950: #052e16;
+  --color-slate-200: #d6ddd8;
+  --color-slate-300: #b7c2bb;
+  --color-slate-400: #8b9b91;
+  --color-slate-500: #637269;
+  --color-slate-900: #0d2118;
+  --color-slate-950: #07140f;
+}
+
+[data-colorway="violet"] {
+  --color-cyan-100: #f3e8ff;
+  --color-cyan-200: #e9d5ff;
+  --color-cyan-300: #d8b4fe;
+  --color-cyan-950: #3b0764;
+  --color-slate-200: #e4dce9;
+  --color-slate-300: #c9bbd1;
+  --color-slate-400: #9f8eaa;
+  --color-slate-500: #75647f;
+  --color-slate-900: #21112d;
+  --color-slate-950: #0f0718;
+}
+
+[data-colorway="sunset"] {
+  --color-cyan-100: #ffe4e6;
+  --color-cyan-200: #fecdd3;
+  --color-cyan-300: #fda4af;
+  --color-cyan-950: #4c0519;
+  --color-slate-200: #e7dedc;
+  --color-slate-300: #cbbab6;
+  --color-slate-400: #a18d88;
+  --color-slate-500: #76635e;
+  --color-slate-900: #2a1b18;
+  --color-slate-950: #17100f;
+}
+
 @media print {
   body {
     background: white;
