@@ -41,6 +41,16 @@
   --color-slate-950: #17100f;
 }
 
+/* Keep destructive group-task actions consistent with the personal task modal. */
+[aria-labelledby="group-task-title"] button.border-rose-300\/50 {
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+[aria-labelledby="group-task-title"] button.border-rose-300\/50:hover {
+  border-color: #fecdd3;
+  color: #ffffff;
+}
+
 @media print {
   body {
     background: white;

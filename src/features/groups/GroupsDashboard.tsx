@@ -3,10 +3,13 @@ import {
   createGroup,
   createGroupMessage,
   createGroupTask,
+  deleteGroup,
+  deleteGroupMessage,
   deleteGroupTask,
   getGroups,
   getGroupMembers,
   getGroupMessages,
+  getCurrentUserId,
   getGroupTasks,
   joinGroup,
   leaveGroup,
@@ -14,6 +17,7 @@ import {
   updateGroupTask,
   updateGroupTaskStatus,
   updateGroupTaskStepCompletion,
+  updateGroupMessage,
   type Group,
   type GroupMember,
   type GroupMessage,
@@ -35,6 +39,7 @@ export function GroupsDashboard() {
   const [activeGroupView, setActiveGroupView] = useState<'tasks' | 'chat'>('tasks')
   const [messageDraft, setMessageDraft] = useState('')
   const [isSendingMessage, setIsSendingMessage] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState('')
   const [selectedTask, setSelectedTask] = useState<GroupTask | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -96,6 +101,12 @@ export function GroupsDashboard() {
     const timer = window.setTimeout(() => { void loadGroups() }, 0)
     return () => window.clearTimeout(timer)
   }, [loadGroups])
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void getCurrentUserId().then((response) => setCurrentUserId(response.data ?? ''))
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (selectedGroupId) void loadTasks(selectedGroupId)
@@ -202,6 +213,38 @@ export function GroupsDashboard() {
     setIsSendingMessage(false)
   }
 
+  async function handleEditMessage(messageId: string, body: string) {
+    if (!selectedGroup) return false
+    const response = await updateGroupMessage(messageId, body)
+    if (response.error) {
+      setMessage(errorMessage(response.error))
+      return false
+    }
+    await loadMessages(selectedGroup.id)
+    return true
+  }
+
+  async function handleDeleteMessage(messageId: string) {
+    if (!selectedGroup) return false
+    const response = await deleteGroupMessage(messageId)
+    if (response.error) {
+      setMessage(errorMessage(response.error))
+      return false
+    }
+    await loadMessages(selectedGroup.id)
+    return true
+  }
+
+  async function handleDeleteGroup() {
+    if (!selectedGroup || !window.confirm(`Permanently delete ${selectedGroup.name}? This will remove its tasks and chat history for every member.`)) return
+    const response = await deleteGroup(selectedGroup.id)
+    if (response.error) return setMessage(errorMessage(response.error))
+    setMessage('Group deleted.')
+    setMessages([])
+    setTasks([])
+    await loadGroups()
+  }
+
   async function copyInviteCode() {
     if (!selectedGroup) return
     await navigator.clipboard.writeText(selectedGroup.invite_code)
@@ -246,7 +289,7 @@ export function GroupsDashboard() {
 
         <div className="p-5 md:p-7">
           {selectedGroup ? <>
-            <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="text-2xl font-bold">{selectedGroup.name}</h2><span className="rounded-full border border-white/15 px-2 py-1 text-xs capitalize text-slate-300">{selectedGroup.role}</span></div><p className="mt-2 text-sm text-slate-300">{selectedGroup.description || 'A shared place for your team’s tasks.'}</p></div><div className="flex flex-wrap gap-2"><button onClick={copyInviteCode} className="rounded-md border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-cyan-100 hover:border-cyan-200">Copy invite code</button>{selectedGroup.role === 'owner' ? <button onClick={rotateInvite} className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 hover:text-white">Reset code</button> : <button onClick={handleLeave} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20">Leave</button>}</div></div>
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="text-2xl font-bold">{selectedGroup.name}</h2><span className="rounded-full border border-white/15 px-2 py-1 text-xs capitalize text-slate-300">{selectedGroup.role}</span></div><p className="mt-2 text-sm text-slate-300">{selectedGroup.description || 'A shared place for your team’s tasks.'}</p></div><div className="flex flex-wrap gap-2"><button onClick={copyInviteCode} className="rounded-md border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-cyan-100 hover:border-cyan-200">Copy invite code</button>{selectedGroup.role === 'owner' ? <><button onClick={rotateInvite} className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 hover:text-white">Reset code</button><button onClick={handleDeleteGroup} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950">Delete group</button></> : <button onClick={handleLeave} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20">Leave</button>}</div></div>
             <div className="mt-6 flex gap-2 border-b border-white/10 pb-3">
               <button type="button" onClick={() => setActiveGroupView('tasks')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'tasks' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Tasks</button>
               <button type="button" onClick={() => setActiveGroupView('chat')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'chat' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Chat</button>
@@ -258,7 +301,7 @@ export function GroupsDashboard() {
                 {tasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-6 text-center"><p className="font-semibold">No shared tasks yet</p><p className="mt-2 text-sm text-slate-300">Add the group’s first task and assign checklist steps.</p></div> : null}
                 {tasks.map((task) => <button type="button" key={task.id} onClick={() => setSelectedTask(task)} className={`w-full rounded-lg bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent ? 'border border-amber-300/70 hover:border-amber-200' : 'border border-white/10 hover:border-cyan-300/70'}`}><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="font-semibold text-white">{task.title}</h4>{task.is_urgent ? <span className="mt-2 inline-flex rounded-full border border-amber-300/50 bg-amber-300/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">Urgent</span> : null}<p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">{task.points} pts</span></div><div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-300"><span>{task.status}</span><span>{task.group_task_steps.length ? `${task.group_task_steps.filter((step) => step.is_completed).length}/${task.group_task_steps.length} steps` : 'No steps'}</span></div></button>)}
               </div>
-            </> : <GroupChatView messages={messages} messageDraft={messageDraft} isSending={isSendingMessage} memberName={(userId) => memberName(userId)} memberNameClass={memberNameClass} onDraftChange={setMessageDraft} onSubmit={handleSendMessage} />}
+            </> : <GroupChatView messages={messages} messageDraft={messageDraft} isSending={isSendingMessage} currentUserId={currentUserId} memberName={(userId) => memberName(userId)} memberNameClass={memberNameClass} onDraftChange={setMessageDraft} onSubmit={handleSendMessage} onEditMessage={handleEditMessage} onDeleteMessage={handleDeleteMessage} />}
           </> : <div className="flex h-full min-h-80 items-center justify-center text-center"><div><h2 className="text-xl font-semibold">Your shared work starts here</h2><p className="mt-2 text-sm text-slate-300">Create a group, then invite teammates with one link.</p></div></div>}
         </div>
       </div>

@@ -160,6 +160,26 @@ export async function createGroupMessage(groupId: string, body: string) {
   }).select().single()
 }
 
+export async function updateGroupMessage(messageId: string, body: string) {
+  return supabase.from('group_messages').update({
+    body: body.trim(),
+    updated_at: new Date().toISOString(),
+  }).eq('id', messageId).select().single()
+}
+
+export async function deleteGroupMessage(messageId: string) {
+  return supabase.from('group_messages').delete().eq('id', messageId)
+}
+
+export async function getCurrentUserId() {
+  const { data, error } = await supabase.auth.getUser()
+  return { data: data.user?.id ?? null, error }
+}
+
+export async function deleteGroup(groupId: string) {
+  return supabase.from('groups').delete().eq('id', groupId)
+}
+
 export async function createGroupTask(groupId: string, title: string, description: string, points: number, isUrgent: boolean, steps: CreateGroupTaskStepInput[]) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { data: null, error: userError ?? new Error('Not logged in') }
