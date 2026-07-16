@@ -1098,9 +1098,9 @@ function App() {
                           : 'border border-white/10 hover:border-cyan-300/70'
                       }`}
                     >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <h3 className="font-semibold text-white">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate font-semibold text-white" title={task.title}>
                             {task.title}
                           </h3>
                           {task.is_urgent ? (
@@ -1112,7 +1112,7 @@ function App() {
                             {task.description || 'No description added.'}
                           </p>
                         </div>
-                        <span className="rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">
+                        <span className="shrink-0 self-start rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">
                           {task.points} pts
                         </span>
                       </div>
@@ -1234,8 +1234,8 @@ function App() {
             aria-labelledby="task-form-modal-title"
           >
             <section className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+                <div className="min-w-0">
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
                     {editingTask ? 'Edit task' : 'New task'}
                   </p>
@@ -1627,16 +1627,16 @@ function App() {
             aria-labelledby="task-modal-title"
           >
             <section className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
+              <div className="relative min-h-10">
+                <div className="min-w-0 pr-32">
                   <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
                     Task details
                   </p>
-                  <h2 id="task-modal-title" className="mt-2 text-2xl font-bold">
+                  <h2 id="task-modal-title" className="mt-2 break-words text-2xl font-bold">
                     {selectedTask.title}
                   </h2>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="absolute right-0 top-0 flex flex-nowrap gap-2">
                   <button
                     type="button"
                     onClick={() => openEditTaskModal(selectedTask)}
