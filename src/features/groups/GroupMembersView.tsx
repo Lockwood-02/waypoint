@@ -16,6 +16,7 @@ export function GroupMembersView({ members, nameClass }: GroupMembersViewProps) 
       case 'frame-emerald': return 'border-emerald-300 shadow-emerald-300/30'
       case 'frame-blue': return 'border-blue-300 shadow-blue-300/30'
       case 'frame-orange': return 'border-orange-300 shadow-orange-300/30'
+      case 'frame-white': return 'border-white shadow-white/40'
       default: return 'border-white/15 shadow-cyan-950/20'
     }
   }

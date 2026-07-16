@@ -23,6 +23,7 @@ export function SettingsModal({ colorway, profile, ownedFlareItems, isUpdatingPr
       case 'name-blue': return 'text-blue-200'
       case 'name-orange': return 'text-orange-200'
       case 'name-fire': return 'text-orange-400'
+      case 'name-white': return 'text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.65)]'
       default: return 'text-[#67e8f9]'
     }
   }

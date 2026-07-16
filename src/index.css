@@ -41,6 +41,19 @@
   --color-slate-950: #17100f;
 }
 
+[data-colorway="graphite"] {
+  --color-cyan-100: #ffffff;
+  --color-cyan-200: #f4f4f5;
+  --color-cyan-300: #ffffff;
+  --color-cyan-950: #18181b;
+  --color-slate-200: #e4e4e7;
+  --color-slate-300: #c4c4c8;
+  --color-slate-400: #9a9a9f;
+  --color-slate-500: #707076;
+  --color-slate-900: #272a2e;
+  --color-slate-950: #111315;
+}
+
 /* Keep destructive group-task actions consistent with the personal task modal. */
 [aria-labelledby="group-task-title"] button.border-rose-300\/50 {
   transition: border-color 150ms ease, color 150ms ease;

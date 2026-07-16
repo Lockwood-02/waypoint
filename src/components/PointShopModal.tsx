@@ -38,6 +38,7 @@ export function PointShopModal({ profile, items, ownedItemIds, isUpdating, messa
       case 'name-blue': return 'text-blue-200'
       case 'name-orange': return 'text-orange-200'
       case 'name-fire': return 'text-orange-400'
+      case 'name-white': return 'text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.65)]'
       default: return 'text-white'
     }
   }
@@ -52,6 +53,7 @@ export function PointShopModal({ profile, items, ownedItemIds, isUpdating, messa
       case 'frame-emerald': return 'border-emerald-300 shadow-emerald-300/30'
       case 'frame-blue': return 'border-blue-300 shadow-blue-300/30'
       case 'frame-orange': return 'border-orange-300 shadow-orange-300/30'
+      case 'frame-white': return 'border-white shadow-white/40'
       default: return 'border-white/15'
     }
   }

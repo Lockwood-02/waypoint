@@ -1,7 +1,7 @@
 export type AuthMode = 'login' | 'signup'
 export type ActiveDashboard = 'tasks' | 'groups' | 'notes' | 'weekly-report' | 'stats'
 export type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
-export type Colorway = 'midnight' | 'forest' | 'violet' | 'sunset'
+export type Colorway = 'midnight' | 'forest' | 'violet' | 'sunset' | 'graphite'
 
 export type AuthState = {
   displayName: string

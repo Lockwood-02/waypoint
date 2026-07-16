@@ -342,6 +342,8 @@ function App() {
         return 'border-blue-300 shadow-blue-300/30'
       case 'frame-orange':
         return 'border-orange-300 shadow-orange-300/30'
+      case 'frame-white':
+        return 'border-white shadow-white/40'
       default:
         return 'border-white/15 shadow-cyan-950/20'
     }
@@ -365,6 +367,8 @@ function App() {
         return 'text-orange-200'
       case 'name-fire':
         return 'text-orange-400'
+      case 'name-white':
+        return 'text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.65)]'
       default:
         return 'text-white'
     }
