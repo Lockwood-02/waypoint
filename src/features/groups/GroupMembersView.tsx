@@ -8,9 +8,14 @@ type GroupMembersViewProps = {
 export function GroupMembersView({ members, nameClass }: GroupMembersViewProps) {
   function avatarFrameClass(frame: string | null) {
     switch (frame) {
-      case 'frame-cyan': return 'border-cyan-300 shadow-cyan-300/30'
+      case 'frame-cyan': return 'border-[#67e8f9] shadow-[#67e8f9]/30'
       case 'frame-gold': return 'border-amber-300 shadow-amber-300/30'
       case 'frame-fire': return 'border-orange-400 shadow-orange-400/40'
+      case 'frame-rose': return 'border-rose-300 shadow-rose-300/30'
+      case 'frame-violet': return 'border-violet-300 shadow-violet-300/30'
+      case 'frame-emerald': return 'border-emerald-300 shadow-emerald-300/30'
+      case 'frame-blue': return 'border-blue-300 shadow-blue-300/30'
+      case 'frame-orange': return 'border-orange-300 shadow-orange-300/30'
       default: return 'border-white/15 shadow-cyan-950/20'
     }
   }

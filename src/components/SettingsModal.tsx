@@ -14,6 +14,19 @@ export function SettingsModal({ colorway, profile, ownedFlareItems, isUpdatingPr
       : profile.selected_avatar_frame === item.value
   }
 
+  function nameFlareClass(value: string | null) {
+    switch (value) {
+      case 'name-gold': return 'text-amber-200'
+      case 'name-rose': return 'text-rose-200'
+      case 'name-emerald': return 'text-emerald-200'
+      case 'name-violet': return 'text-violet-200'
+      case 'name-blue': return 'text-blue-200'
+      case 'name-orange': return 'text-orange-200'
+      case 'name-fire': return 'text-orange-400'
+      default: return 'text-[#67e8f9]'
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 px-4 py-8" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <section className="max-h-full w-full max-w-2xl overflow-y-auto rounded-xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
@@ -45,7 +58,7 @@ export function SettingsModal({ colorway, profile, ownedFlareItems, isUpdatingPr
               <p className="text-sm font-semibold text-slate-200">Name color</p>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {nameFlares.length === 0 ? <p className="rounded-md border border-dashed border-white/15 p-3 text-sm text-slate-400 sm:col-span-2">No name colors owned yet.</p> : null}
-                {nameFlares.map((item) => { const equipped = isEquipped(item); return <button key={item.id} type="button" disabled={isUpdatingProfile} onClick={() => onToggleFlare(item)} className={`flex items-center justify-between rounded-lg border p-3 text-left transition disabled:opacity-60 ${equipped ? 'border-cyan-300 bg-cyan-300/10 ring-1 ring-cyan-300' : 'border-white/10 bg-white/[0.04] hover:border-white/25'}`}><span className={item.value === 'name-gold' ? 'font-bold text-amber-200' : item.value === 'name-rose' ? 'font-bold text-rose-200' : 'font-bold text-cyan-200'}>{item.label}</span><span className="text-xs font-semibold text-slate-300">{equipped ? 'Unequip' : 'Equip'}</span></button> })}
+                {nameFlares.map((item) => { const equipped = isEquipped(item); return <button key={item.id} type="button" disabled={isUpdatingProfile} onClick={() => onToggleFlare(item)} className={`flex items-center justify-between rounded-lg border p-3 text-left transition disabled:opacity-60 ${equipped ? 'border-cyan-300 bg-cyan-300/10 ring-1 ring-cyan-300' : 'border-white/10 bg-white/[0.04] hover:border-white/25'}`}><span className={`font-bold ${nameFlareClass(item.value)}`}>{item.label}</span><span className="text-xs font-semibold text-slate-300">{equipped ? 'Unequip' : 'Equip'}</span></button> })}
               </div>
             </div>
             <div>

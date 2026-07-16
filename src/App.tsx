@@ -31,6 +31,7 @@ import { GroupsDashboard } from './features/groups/GroupsDashboard'
 import { supabase } from './lib/supabaseClient'
 import { AppNavigation } from './components/AppNavigation'
 import { SettingsModal } from './components/SettingsModal'
+import { PointShopModal } from './components/PointShopModal'
 import { changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
 import type { ActiveDashboard, AuthMode, AuthState, Colorway, ShopItem, TaskCompletionFilter, TaskFormState } from './types/app'
 
@@ -326,11 +327,21 @@ function App() {
   const avatarFrameClass = useMemo(() => {
     switch (profile?.selected_avatar_frame) {
       case 'frame-cyan':
-        return 'border-cyan-300 shadow-cyan-300/30'
+        return 'border-[#67e8f9] shadow-[#67e8f9]/30'
       case 'frame-gold':
         return 'border-amber-300 shadow-amber-300/30'
       case 'frame-fire':
         return 'border-orange-400 shadow-orange-400/40'
+      case 'frame-rose':
+        return 'border-rose-300 shadow-rose-300/30'
+      case 'frame-violet':
+        return 'border-violet-300 shadow-violet-300/30'
+      case 'frame-emerald':
+        return 'border-emerald-300 shadow-emerald-300/30'
+      case 'frame-blue':
+        return 'border-blue-300 shadow-blue-300/30'
+      case 'frame-orange':
+        return 'border-orange-300 shadow-orange-300/30'
       default:
         return 'border-white/15 shadow-cyan-950/20'
     }
@@ -344,6 +355,16 @@ function App() {
         return 'text-cyan-200'
       case 'name-rose':
         return 'text-rose-200'
+      case 'name-emerald':
+        return 'text-emerald-200'
+      case 'name-violet':
+        return 'text-violet-200'
+      case 'name-blue':
+        return 'text-blue-200'
+      case 'name-orange':
+        return 'text-orange-200'
+      case 'name-fire':
+        return 'text-orange-400'
       default:
         return 'text-white'
     }
@@ -1412,7 +1433,19 @@ function App() {
           </div>
         ) : null}
 
-        {isPointShopOpen ? (
+        {isPointShopOpen && profile ? (
+          <PointShopModal
+            profile={profile}
+            items={shopItems}
+            ownedItemIds={ownedShopItemIds}
+            isUpdating={isUpdatingProfile}
+            message={profileActionMessage}
+            onSelectItem={handleBuyShopItem}
+            onClose={() => setIsPointShopOpen(false)}
+          />
+        ) : null}
+
+        {isPointShopOpen && !profile ? (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8"
             role="dialog"
@@ -1429,7 +1462,7 @@ function App() {
                     Point Shop
                   </h2>
                   <p className="mt-2 text-sm text-slate-300">
-                    Current balance: {profile?.total_points ?? 0} points
+                    Current balance: {(profile as Profile | null)?.total_points ?? 0} points
                   </p>
                 </div>
                 <button
@@ -1445,14 +1478,14 @@ function App() {
                 {shopItems.map((item) => {
                   const isEquipped =
                     (item.type === 'avatar_frame' &&
-                      profile?.selected_avatar_frame === item.value) ||
+                      (profile as Profile | null)?.selected_avatar_frame === item.value) ||
                     (item.type === 'name_color' &&
-                      profile?.selected_name_color === item.value)
+                      (profile as Profile | null)?.selected_name_color === item.value)
                   const isOwned =
                     ownedShopItemIds.includes(item.id) ||
-                    profile?.selected_avatar_frame === item.value ||
-                    profile?.selected_name_color === item.value
-                  const canAfford = (profile?.total_points ?? 0) >= item.cost
+                    (profile as Profile | null)?.selected_avatar_frame === item.value ||
+                    (profile as Profile | null)?.selected_name_color === item.value
+                  const canAfford = ((profile as Profile | null)?.total_points ?? 0) >= item.cost
 
                   return (
                     <article

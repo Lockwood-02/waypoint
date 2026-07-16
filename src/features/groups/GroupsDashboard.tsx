@@ -70,6 +70,11 @@ export function GroupsDashboard() {
       case 'name-gold': return 'text-amber-200'
       case 'name-cyan': return 'text-cyan-200'
       case 'name-rose': return 'text-rose-200'
+      case 'name-emerald': return 'text-emerald-200'
+      case 'name-violet': return 'text-violet-200'
+      case 'name-blue': return 'text-blue-200'
+      case 'name-orange': return 'text-orange-200'
+      case 'name-fire': return 'text-orange-400'
       default: return 'text-white'
     }
   }
