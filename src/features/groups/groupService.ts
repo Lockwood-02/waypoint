@@ -117,6 +117,23 @@ export async function rotateGroupInvite(groupId: string) {
   return supabase.rpc('rotate_group_invite', { target_group_id: groupId })
 }
 
+export async function updateGroupDetails(
+  groupId: string,
+  name: string,
+  description: string,
+) {
+  return supabase
+    .from('groups')
+    .update({
+      name: name.trim(),
+      description: description.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', groupId)
+    .select()
+    .single()
+}
+
 export async function leaveGroup(groupId: string) {
   return supabase.from('group_members').delete().eq('group_id', groupId)
 }
