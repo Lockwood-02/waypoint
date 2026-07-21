@@ -48,8 +48,13 @@ export function NotesDashboard() {
   const [editingFolder, setEditingFolder] = useState<NoteFolder | null>(null)
   const [folderName, setFolderName] = useState('')
   const [isSavingFolder, setIsSavingFolder] = useState(false)
+  const [isDeleteFolderOpen, setIsDeleteFolderOpen] = useState(false)
+  const [isDeletingFolder, setIsDeletingFolder] = useState(false)
 
   const activeFolder = folders.find((folder) => folder.id === activeFolderId) ?? null
+  const activeFolderNoteCount = activeFolder
+    ? notes.filter((note) => note.folder_id === activeFolder.id).length
+    : 0
 
   async function refreshNotesAndFolders() {
     setIsLoading(true)
@@ -270,28 +275,33 @@ export function NotesDashboard() {
     setFolderName('')
   }
 
-  async function handleDeleteFolder() {
+  async function handleDeleteFolder(deleteContents: boolean) {
     if (!activeFolder) return
-    const noteCount = notes.filter((note) => note.folder_id === activeFolder.id).length
-    const detail = noteCount
-      ? ` Its ${noteCount} note${noteCount === 1 ? '' : 's'} will be moved back to All notes.`
-      : ''
-    if (!window.confirm(`Delete the folder “${activeFolder.name}”?${detail}`)) return
-
+    setIsDeletingFolder(true)
     setError('')
-    const response = await deleteNoteFolder(activeFolder.id)
+    const response = await deleteNoteFolder(activeFolder.id, deleteContents)
     if (response.error) {
       setError(errorMessage(response.error))
+      setIsDeletingFolder(false)
       return
     }
 
-    setNotes((current) => current.map((note) =>
-      note.folder_id === activeFolder.id ? { ...note, folder_id: null } : note,
-    ))
+    setNotes((current) => deleteContents
+      ? current.filter((note) => note.folder_id !== activeFolder.id)
+      : current.map((note) =>
+          note.folder_id === activeFolder.id ? { ...note, folder_id: null } : note,
+        ),
+    )
     setFolders((current) => current.filter((folder) => folder.id !== activeFolder.id))
     setActiveFolderId('')
     setSearch('')
-    setNotice('Folder deleted. Its notes are now in All notes.')
+    setIsDeleteFolderOpen(false)
+    setIsDeletingFolder(false)
+    setNotice(
+      deleteContents
+        ? 'Folder and its notes deleted.'
+        : 'Folder deleted. Its notes are now in All notes.',
+    )
   }
 
   return (
@@ -335,7 +345,7 @@ export function NotesDashboard() {
                 <button type="button" onClick={openRenameFolder} className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200">
                   Rename folder
                 </button>
-                <button type="button" onClick={() => void handleDeleteFolder()} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950">
+                <button type="button" onClick={() => { setError(''); setIsDeleteFolderOpen(true) }} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950">
                   Delete folder
                 </button>
               </>
@@ -547,6 +557,81 @@ export function NotesDashboard() {
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {isDeleteFolderOpen && activeFolder ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-folder-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isDeletingFolder) {
+              setIsDeleteFolderOpen(false)
+              setError('')
+            }
+          }}
+        >
+          <section className="w-full max-w-lg rounded-xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-rose-950/40">
+            <p className="text-xs font-bold uppercase tracking-wider text-rose-200">Delete folder</p>
+            <h2 id="delete-folder-title" className="mt-2 break-words text-2xl font-bold">
+              What should happen to “{activeFolder.name}”?
+            </h2>
+            {activeFolderNoteCount > 0 ? (
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                This folder contains {activeFolderNoteCount} note{activeFolderNoteCount === 1 ? '' : 's'}. You can keep them by moving them to All notes, or permanently delete them with the folder.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                This folder is empty and can be safely deleted.
+              </p>
+            )}
+
+            {error ? (
+              <p className="mt-4 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+                {error}
+              </p>
+            ) : null}
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={isDeletingFolder}
+                onClick={() => { setIsDeleteFolderOpen(false); setError('') }}
+                className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              {activeFolderNoteCount > 0 ? (
+                <button
+                  type="button"
+                  disabled={isDeletingFolder}
+                  onClick={() => void handleDeleteFolder(false)}
+                  className="rounded-md border border-cyan-300/50 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200 hover:bg-cyan-300 hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isDeletingFolder ? 'Deleting...' : 'Move notes to All notes'}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={isDeletingFolder}
+                onClick={() => void handleDeleteFolder(activeFolderNoteCount > 0)}
+                className="rounded-md bg-rose-300 px-4 py-2 text-sm font-bold text-rose-950 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeletingFolder
+                  ? 'Deleting...'
+                  : activeFolderNoteCount > 0
+                    ? 'Delete folder and notes'
+                    : 'Delete folder'}
+              </button>
+            </div>
+            {activeFolderNoteCount > 0 ? (
+              <p className="mt-3 text-right text-xs font-semibold text-rose-200">
+                Deleting the notes cannot be undone.
+              </p>
+            ) : null}
+          </section>
         </div>
       ) : null}
     </>

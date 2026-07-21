@@ -134,13 +134,15 @@ export async function updateNoteFolder(folderId: string, name: string) {
   }
 }
 
-export async function deleteNoteFolder(folderId: string) {
-  const moveNotesResponse = await supabase
-    .from('notes')
-    .update({ folder_id: null, updated_at: new Date().toISOString() })
-    .eq('folder_id', folderId)
+export async function deleteNoteFolder(folderId: string, deleteContents: boolean) {
+  const notesResponse = deleteContents
+    ? await supabase.from('notes').delete().eq('folder_id', folderId)
+    : await supabase
+        .from('notes')
+        .update({ folder_id: null, updated_at: new Date().toISOString() })
+        .eq('folder_id', folderId)
 
-  if (moveNotesResponse.error) return moveNotesResponse
+  if (notesResponse.error) return notesResponse
 
   return supabase.from('note_folders').delete().eq('id', folderId)
 }
