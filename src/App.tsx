@@ -35,7 +35,7 @@ import { SettingsModal } from './components/SettingsModal'
 import { PointShopModal } from './components/PointShopModal'
 import { TaskDueIndicator } from './components/TaskDueIndicator'
 import { clampTaskPoints, MAX_TASK_POINTS, MIN_TASK_POINTS } from './lib/pointEconomy'
-import { changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
+import { appVersion, changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
 import type { ActiveDashboard, AuthMode, AuthState, Colorway, ShopItem, TaskCompletionFilter, TaskFormState } from './types/app'
 
 function App() {
@@ -866,6 +866,7 @@ function App() {
           <AppNavigation
             activeDashboard={activeDashboard}
             onDashboardChange={setActiveDashboard}
+            onOpenChangelog={() => setIsChangelogOpen(true)}
             onOpenSettings={() => {
               setProfileActionMessage('')
               setIsSettingsOpen(true)
@@ -1192,40 +1193,40 @@ function App() {
             aria-modal="true"
             aria-labelledby="changelog-modal-title"
           >
-            <section className="w-full max-w-xl rounded-lg border border-cyan-300/30 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/70">
+            <section className="max-h-full w-full max-w-xl overflow-y-auto rounded-lg border border-cyan-300/30 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/70">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">
-                What&apos;s new with v0.7!
+                What&apos;s new in {appVersion}
               </p>
               <h2 id="changelog-modal-title" className="mt-2 text-3xl font-bold">
-                Waypoint is better together
+                A more complete Waypoint
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Collaborate with your groups and personalize how you show up.
+                Organize your work, collaborate with groups, and keep progress visible across every dashboard.
               </p>
 
               <div className="mt-6 space-y-3">
                 <article className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-4">
-                  <h3 className="font-bold text-cyan-100">Groups and shared tasks</h3>
+                  <h3 className="font-bold text-cyan-100">Calendar and due dates</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Create a group or join one with an invite code. Group members can build shared tasks, assign checklist steps, and track progress together.
+                    Personal and group tasks with due dates now appear together on an interactive calendar with daily task details.
                   </p>
                 </article>
                 <article className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
-                  <h3 className="font-bold text-amber-100">Group chat</h3>
+                  <h3 className="font-bold text-amber-100">Organized Markdown notes</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Switch to Chat inside any group to leave messages for your teammates. Press Enter to send, use Shift+Enter for a new line, and expand longer messages when you want to read more.
+                    File notes into folders, move them when needed, and use Markdown for headings, lists, links, tables, code, and richer reference material.
                   </p>
                 </article>
                 <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">
-                  <h3 className="font-bold text-cyan-100">Choose your profile flares</h3>
+                  <h3 className="font-bold text-cyan-100">Reports you can save</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Open Settings to equip or unequip name colors and avatar frames you own. Equipped name colors now appear beside your messages in group chat.
+                    Save report drafts with selected personal tasks, group tasks, dates, templates, and notes, then reopen them whenever you are ready to continue.
                   </p>
                 </article>
                 <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">
-                  <h3 className="font-bold text-cyan-100">Your style, your way</h3>
+                  <h3 className="font-bold text-cyan-100">Stronger groups and rewards</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Point Shop purchases remain yours to switch at any time, and the Midnight, Forest, Violet, and Sunset application colorways are still available in Settings.
+                    Group task permissions and confirmations are clearer, while the rebalanced point economy makes profile rewards meaningful milestones.
                   </p>
                 </article>
               </div>
@@ -1236,7 +1237,7 @@ function App() {
                 autoFocus
                 className="mt-6 w-full rounded-md bg-cyan-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950"
               >
-                Got it — take me to Waypoint
+                Close update notes
               </button>
             </section>
           </div>

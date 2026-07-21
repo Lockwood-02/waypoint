@@ -1,8 +1,10 @@
 import type { ActiveDashboard } from '../types/app'
+import { appVersion } from '../config/appConfig'
 
 type AppNavigationProps = {
   activeDashboard: ActiveDashboard
   onDashboardChange: (dashboard: ActiveDashboard) => void
+  onOpenChangelog: () => void
   onOpenSettings: () => void
   onSignOut: () => void
 }
@@ -16,11 +18,21 @@ const dashboardLinks: { id: ActiveDashboard; label: string }[] = [
   { id: 'stats', label: 'Stats' },
 ]
 
-export function AppNavigation({ activeDashboard, onDashboardChange, onOpenSettings, onSignOut }: AppNavigationProps) {
+export function AppNavigation({ activeDashboard, onDashboardChange, onOpenChangelog, onOpenSettings, onSignOut }: AppNavigationProps) {
   return (
     <nav className="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Waypoint</p>
+        <div className="flex items-baseline gap-2">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Waypoint</p>
+          <button
+            type="button"
+            onClick={onOpenChangelog}
+            title={`View ${appVersion} update notes`}
+            className="cursor-pointer text-[0.65rem] font-semibold tracking-normal text-slate-500 underline-offset-2 transition hover:text-cyan-200 hover:underline focus:outline-none focus:text-cyan-200 focus:underline"
+          >
+            {appVersion}
+          </button>
+        </div>
         <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
           {dashboardLinks.map((link) => (
             <button
