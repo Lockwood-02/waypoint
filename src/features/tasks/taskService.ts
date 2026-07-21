@@ -1,3 +1,4 @@
+import { clampTaskPoints } from '../../lib/pointEconomy'
 import { supabase } from '../../lib/supabaseClient'
 
 export type TaskStatus =
@@ -211,7 +212,7 @@ export async function createTask(input: CreateTaskInput) {
       user_id: user.id,
       title: input.title,
       description: input.description ?? '',
-      points: input.points,
+      points: clampTaskPoints(input.points),
       status: 'Not Started' satisfies TaskStatus,
       is_urgent: input.isUrgent,
       due_date: input.dueDate || null,
@@ -307,7 +308,7 @@ export async function updateTask(taskId: string, input: UpdateTaskInput) {
     .update({
       title: input.title,
       description: input.description ?? '',
-      points: input.points,
+      points: clampTaskPoints(input.points),
       is_urgent: input.isUrgent,
       due_date: input.dueDate || null,
       updated_at: updatedAt,

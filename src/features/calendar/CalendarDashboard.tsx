@@ -15,6 +15,7 @@ import {
 import { GroupTaskDetailsModal } from '../groups/GroupTaskDetailsModal'
 import { GroupTaskFormModal } from '../groups/GroupTaskFormModal'
 import type { Task } from '../tasks/taskService'
+import { clampTaskPoints } from '../../lib/pointEconomy'
 
 type CalendarDashboardProps = {
   tasks: Task[]
@@ -232,7 +233,7 @@ export function CalendarDashboard({
       editingGroupTask.task,
       taskTitle,
       taskDescription,
-      Math.max(0, Number(taskPoints) || 0),
+      clampTaskPoints(Number(taskPoints)),
       taskUrgent,
       taskDueDate,
       taskSteps,

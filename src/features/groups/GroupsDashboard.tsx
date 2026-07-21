@@ -29,6 +29,7 @@ import { GroupTaskDetailsModal } from './GroupTaskDetailsModal'
 import { GroupChatView } from './GroupChatView'
 import { GroupMembersView } from './GroupMembersView'
 import { TaskDueIndicator } from '../../components/TaskDueIndicator'
+import { clampTaskPoints } from '../../lib/pointEconomy'
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Something went wrong.'
@@ -161,7 +162,7 @@ export function GroupsDashboard() {
   async function handleCreateTask(event: FormEvent) {
     event.preventDefault()
     if (!selectedGroup) return
-    const points = Math.max(0, Number(taskPoints) || 0)
+    const points = clampTaskPoints(Number(taskPoints))
     const response = editingTask
       ? await updateGroupTask(editingTask, taskTitle, taskDescription, points, taskUrgent, taskDueDate, taskSteps)
       : await createGroupTask(selectedGroup.id, taskTitle, taskDescription, points, taskUrgent, taskDueDate, taskSteps)

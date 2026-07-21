@@ -1,3 +1,4 @@
+import { clampTaskPoints } from '../../lib/pointEconomy'
 import { supabase } from '../../lib/supabaseClient'
 import type { TaskStatus } from '../tasks/taskService'
 
@@ -210,7 +211,7 @@ export async function createGroupTask(groupId: string, title: string, descriptio
     created_by: user.id,
     title: title.trim(),
     description: description.trim(),
-    points,
+    points: clampTaskPoints(points),
     is_urgent: isUrgent,
     due_date: dueDate || null,
   }).select().single()
@@ -242,7 +243,7 @@ export async function updateGroupTask(task: GroupTask, title: string, descriptio
   const taskResponse = await supabase.from('group_tasks').update({
     title: title.trim(),
     description: description.trim(),
-    points,
+    points: clampTaskPoints(points),
     is_urgent: isUrgent,
     due_date: dueDate || null,
     updated_at: new Date().toISOString(),

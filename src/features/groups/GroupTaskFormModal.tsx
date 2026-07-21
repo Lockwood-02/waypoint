@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react'
+import { MAX_TASK_POINTS, MIN_TASK_POINTS } from '../../lib/pointEconomy'
 import type { GroupMember } from './groupService'
 
 type StepDraft = { title: string; assignedTo: string }
@@ -58,7 +59,7 @@ export function GroupTaskFormModal({
           </label>
           <label className="block"><span className="text-sm font-medium text-slate-200">Title</span><input required maxLength={160} value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="Plan the next group milestone" className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
           <label className="block"><span className="text-sm font-medium text-slate-200">Description</span><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="Add the shared task details here." className="mt-2 min-h-28 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
-          <label className="block"><span className="text-sm font-medium text-slate-200">Points</span><input type="number" min="0" required value={points} onChange={(event) => onPointsChange(event.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
+          <label className="block"><span className="text-sm font-medium text-slate-200">Points</span><input type="number" min={MIN_TASK_POINTS} max={MAX_TASK_POINTS} step="1" required value={points} onChange={(event) => onPointsChange(event.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /><span className="mt-1 block text-xs text-slate-400">Choose between {MIN_TASK_POINTS} and {MAX_TASK_POINTS} points.</span></label>
           <label className="block"><span className="text-sm font-medium text-slate-200">Due date <span className="font-normal text-slate-400">(optional)</span></span><input type="date" value={dueDate} onChange={(event) => onDueDateChange(event.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
 
           <div>

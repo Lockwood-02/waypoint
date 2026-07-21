@@ -34,6 +34,7 @@ import { AppNavigation } from './components/AppNavigation'
 import { SettingsModal } from './components/SettingsModal'
 import { PointShopModal } from './components/PointShopModal'
 import { TaskDueIndicator } from './components/TaskDueIndicator'
+import { clampTaskPoints, MAX_TASK_POINTS, MIN_TASK_POINTS } from './lib/pointEconomy'
 import { changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
 import type { ActiveDashboard, AuthMode, AuthState, Colorway, ShopItem, TaskCompletionFilter, TaskFormState } from './types/app'
 
@@ -610,11 +611,11 @@ function App() {
     setIsCreatingTask(true)
     setTaskActionMessage('')
 
-    const points = Number.parseInt(taskForm.points, 10)
+    const points = clampTaskPoints(Number.parseInt(taskForm.points, 10))
     const taskInput = {
       title: taskForm.title.trim(),
       description: taskForm.description.trim(),
-      points: Number.isFinite(points) && points > 0 ? points : 10,
+      points,
       steps: taskForm.steps,
       tagId: taskForm.newTagName.trim() ? undefined : taskForm.tagId,
       newTagName: taskForm.newTagName,
@@ -1326,7 +1327,9 @@ function App() {
                   </span>
                   <input
                     type="number"
-                    min="1"
+                    min={MIN_TASK_POINTS}
+                    max={MAX_TASK_POINTS}
+                    step="1"
                     required
                     value={taskForm.points}
                     onChange={(event) =>
@@ -1337,6 +1340,9 @@ function App() {
                     }
                     className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
                   />
+                  <span className="mt-1 block text-xs text-slate-400">
+                    Choose between {MIN_TASK_POINTS} and {MAX_TASK_POINTS} points.
+                  </span>
                 </label>
 
                 <label className="block">
@@ -1561,7 +1567,7 @@ function App() {
                             ? isUpdatingProfile
                               ? 'Buying...'
                               : 'Buy and equip'
-                            : 'Need more points'}
+                            : `Need ${item.cost - ((profile as Profile | null)?.total_points ?? 0)} more`}
                       </button>
                     </article>
                   )
