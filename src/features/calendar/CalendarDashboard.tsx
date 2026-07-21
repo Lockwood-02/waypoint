@@ -268,7 +268,7 @@ export function CalendarDashboard({
   }
 
   async function handleDeleteGroupTask() {
-    if (!selectedGroupTask || !window.confirm('Delete this group task?')) return
+    if (!selectedGroupTask) return
     const response = await deleteGroupTask(selectedGroupTask.task.id)
     if (response.error) {
       setGroupTasksError(errorMessage(response.error))
@@ -455,7 +455,7 @@ export function CalendarDashboard({
           onClose={() => setSelectedGroupTask(null)}
           onEdit={() => openEditGroupTask(selectedGroupTask)}
           onToggleStep={(stepId, isCompleted) => void handleToggleGroupStep(stepId, isCompleted)}
-          onDelete={() => void handleDeleteGroupTask()}
+          onDelete={handleDeleteGroupTask}
           onToggleStatus={() => void handleToggleGroupTaskStatus()}
         />
       ) : null}

@@ -51,6 +51,8 @@ export function GroupsDashboard() {
   const [showJoinGroup, setShowJoinGroup] = useState(false)
   const [showRenameGroup, setShowRenameGroup] = useState(false)
   const [showCreateTask, setShowCreateTask] = useState(false)
+  const [groupConfirmation, setGroupConfirmation] = useState<'delete' | 'leave' | null>(null)
+  const [isProcessingGroupAction, setIsProcessingGroupAction] = useState(false)
   const [editingTask, setEditingTask] = useState<GroupTask | null>(null)
   const [groupName, setGroupName] = useState('')
   const [renameGroupName, setRenameGroupName] = useState('')
@@ -216,7 +218,7 @@ export function GroupsDashboard() {
   }
 
   async function handleDeleteSelectedTask() {
-    if (!selectedGroup || !selectedTask || !window.confirm('Delete this group task?')) return
+    if (!selectedGroup || !selectedTask) return
     const response = await deleteGroupTask(selectedTask.id)
     if (response.error) return setMessage(errorMessage(response.error))
     setSelectedTask(null)
@@ -279,9 +281,16 @@ export function GroupsDashboard() {
   }
 
   async function handleDeleteGroup() {
-    if (!selectedGroup || !window.confirm(`Permanently delete ${selectedGroup.name}? This will remove its tasks and chat history for every member.`)) return
+    if (!selectedGroup) return
+    setIsProcessingGroupAction(true)
     const response = await deleteGroup(selectedGroup.id)
-    if (response.error) return setMessage(errorMessage(response.error))
+    if (response.error) {
+      setMessage(errorMessage(response.error))
+      setIsProcessingGroupAction(false)
+      return
+    }
+    setGroupConfirmation(null)
+    setIsProcessingGroupAction(false)
     setMessage('Group deleted.')
     setMessages([])
     setTasks([])
@@ -334,9 +343,16 @@ export function GroupsDashboard() {
   }
 
   async function handleLeave() {
-    if (!selectedGroup || !window.confirm(`Leave ${selectedGroup.name}?`)) return
+    if (!selectedGroup) return
+    setIsProcessingGroupAction(true)
     const response = await leaveGroup(selectedGroup.id)
-    if (response.error) return setMessage(errorMessage(response.error))
+    if (response.error) {
+      setMessage(errorMessage(response.error))
+      setIsProcessingGroupAction(false)
+      return
+    }
+    setGroupConfirmation(null)
+    setIsProcessingGroupAction(false)
     setMessage('You left the group.')
     await loadGroups()
   }
@@ -373,7 +389,7 @@ export function GroupsDashboard() {
 
         <div className="p-5 md:p-7">
           {selectedGroup ? <>
-            <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="text-2xl font-bold">{selectedGroup.name}</h2>{selectedGroup.role === 'owner' ? <button type="button" onClick={openRenameGroup} aria-label="Rename group" title="Rename group" className="rounded-md border border-white/15 px-2 py-1 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300 hover:text-cyan-200">&#9998;</button> : null}<span className="rounded-full border border-white/15 px-2 py-1 text-xs capitalize text-slate-300">{selectedGroup.role}</span></div><p className="mt-2 text-sm text-slate-300">{selectedGroup.description || 'A shared place for your team’s tasks.'}</p></div><div className="flex flex-wrap gap-2"><button onClick={copyInviteCode} className="rounded-md border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-cyan-100 hover:border-cyan-200">Copy invite code</button>{selectedGroup.role === 'owner' ? <><button onClick={rotateInvite} className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 hover:text-white">Reset code</button><button onClick={handleDeleteGroup} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950">Delete group</button></> : <button onClick={handleLeave} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20">Leave</button>}</div></div>
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="text-2xl font-bold">{selectedGroup.name}</h2>{selectedGroup.role === 'owner' ? <button type="button" onClick={openRenameGroup} aria-label="Rename group" title="Rename group" className="rounded-md border border-white/15 px-2 py-1 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300 hover:text-cyan-200">&#9998;</button> : null}<span className="rounded-full border border-white/15 px-2 py-1 text-xs capitalize text-slate-300">{selectedGroup.role}</span></div><p className="mt-2 text-sm text-slate-300">{selectedGroup.description || 'A shared place for your team’s tasks.'}</p></div><div className="flex flex-wrap gap-2"><button onClick={copyInviteCode} className="rounded-md border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-cyan-100 hover:border-cyan-200">Copy invite code</button>{selectedGroup.role === 'owner' ? <><button onClick={rotateInvite} className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 hover:text-white">Reset code</button><button onClick={() => { setMessage(''); setGroupConfirmation('delete') }} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950">Delete group</button></> : <button onClick={() => { setMessage(''); setGroupConfirmation('leave') }} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20">Leave</button>}</div></div>
             <div className="mt-6 flex gap-2 border-b border-white/10 pb-3">
               <button type="button" onClick={() => setActiveGroupView('tasks')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'tasks' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Tasks</button>
               <button type="button" onClick={() => setActiveGroupView('chat')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'chat' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Chat</button>
@@ -393,7 +409,89 @@ export function GroupsDashboard() {
         </div>
       </div>
 
-      {selectedTask && selectedGroup ? <GroupTaskDetailsModal task={selectedTask} group={selectedGroup} members={members} currentUserId={currentUserId} onClose={() => setSelectedTask(null)} onEdit={() => openEditTask(selectedTask)} onToggleStep={(stepId, isCompleted) => void handleToggleStep(stepId, isCompleted)} onDelete={() => void handleDeleteSelectedTask()} onToggleStatus={() => void handleToggleSelectedTaskStatus()} /> : null}
+      {selectedTask && selectedGroup ? <GroupTaskDetailsModal task={selectedTask} group={selectedGroup} members={members} currentUserId={currentUserId} onClose={() => setSelectedTask(null)} onEdit={() => openEditTask(selectedTask)} onToggleStep={(stepId, isCompleted) => void handleToggleStep(stepId, isCompleted)} onDelete={handleDeleteSelectedTask} onToggleStatus={() => void handleToggleSelectedTaskStatus()} /> : null}
+
+      {groupConfirmation && selectedGroup ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="group-confirmation-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isProcessingGroupAction) {
+              setGroupConfirmation(null)
+              setMessage('')
+            }
+          }}
+        >
+          <section className="w-full max-w-lg rounded-xl border border-rose-300/25 bg-slate-950 p-6 shadow-2xl shadow-rose-950/50">
+            <div className="flex items-start gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-rose-300/30 bg-rose-300/10 text-rose-200">
+                <svg viewBox="0 0 24 24" aria-hidden="true" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 3.8 2.4 17.5A2 2 0 0 0 4.1 20h15.8a2 2 0 0 0 1.7-2.5L13.7 3.8a2 2 0 0 0-3.4 0Z" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-wider text-rose-200">
+                  {groupConfirmation === 'delete' ? 'Permanent action' : 'Confirm departure'}
+                </p>
+                <h2 id="group-confirmation-title" className="mt-2 break-words text-2xl font-bold">
+                  {groupConfirmation === 'delete'
+                    ? `Delete “${selectedGroup.name}”?`
+                    : `Leave “${selectedGroup.name}”?`}
+                </h2>
+              </div>
+            </div>
+
+            {groupConfirmation === 'delete' ? (
+              <div className="mt-5 space-y-3 text-sm leading-6 text-slate-300">
+                <p>
+                  This will permanently delete the group for all {selectedGroup.member_count} member{selectedGroup.member_count === 1 ? '' : 's'}.
+                </p>
+                <p className="rounded-md border border-rose-300/25 bg-rose-300/10 px-4 py-3 font-semibold text-rose-100">
+                  All shared tasks, checklist progress, member access, and chat history will be removed. This cannot be undone.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-5 space-y-3 text-sm leading-6 text-slate-300">
+                <p>
+                  You will lose access to this group’s tasks, members, and chat history. The group and its content will remain available to everyone else.
+                </p>
+                <p className="rounded-md border border-amber-300/25 bg-amber-300/10 px-4 py-3 text-amber-100">
+                  You will need a valid invite code if you want to join this group again.
+                </p>
+              </div>
+            )}
+
+            {message ? (
+              <p className="mt-4 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+                {message}
+              </p>
+            ) : null}
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={isProcessingGroupAction}
+                onClick={() => { setGroupConfirmation(null); setMessage('') }}
+                className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isProcessingGroupAction}
+                onClick={() => void (groupConfirmation === 'delete' ? handleDeleteGroup() : handleLeave())}
+                className="rounded-md bg-rose-300 px-4 py-2 text-sm font-bold text-rose-950 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isProcessingGroupAction
+                  ? groupConfirmation === 'delete' ? 'Deleting group...' : 'Leaving group...'
+                  : groupConfirmation === 'delete' ? 'Permanently delete group' : 'Leave group'}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {showCreateGroup ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"><form onSubmit={handleCreateGroup} className="w-full max-w-lg rounded-xl border border-white/10 bg-slate-950 p-6"><h2 className="text-2xl font-bold">Create a group</h2><label className="mt-5 block text-sm">Name<input required maxLength={80} value={groupName} onChange={(e) => setGroupName(e.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><label className="mt-4 block text-sm">Description<textarea maxLength={500} value={groupDescription} onChange={(e) => setGroupDescription(e.target.value)} className="mt-2 min-h-24 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setShowCreateGroup(false)} className="rounded-md border border-white/15 px-4 py-2 font-semibold transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">Cancel</button><button className="rounded-md bg-cyan-300 px-4 py-2 font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950">Create</button></div></form></div> : null}
       {showRenameGroup ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"><form onSubmit={handleRenameGroup} className="w-full max-w-md rounded-xl border border-white/10 bg-slate-950 p-6"><h2 className="text-2xl font-bold">Edit group details</h2><p className="mt-2 text-sm text-slate-300">Update the name and description everyone sees for this group.</p><label className="mt-5 block text-sm">Group name<input required autoFocus maxLength={80} value={renameGroupName} onChange={(e) => setRenameGroupName(e.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><label className="mt-4 block text-sm">Description<textarea maxLength={500} value={renameGroupDescription} onChange={(e) => setRenameGroupDescription(e.target.value)} className="mt-2 min-h-24 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowRenameGroup(false); setRenameGroupName(''); setRenameGroupDescription('') }} className="rounded-md border border-white/15 px-4 py-2">Cancel</button><button className="rounded-md bg-cyan-300 px-4 py-2 font-bold text-slate-950">Save details</button></div></form></div> : null}

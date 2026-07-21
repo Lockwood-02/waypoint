@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { TaskDueIndicator } from '../../components/TaskDueIndicator'
 import type { Group, GroupMember, GroupTask } from './groupService'
 
@@ -9,7 +10,7 @@ type GroupTaskDetailsModalProps = {
   onClose: () => void
   onEdit: () => void
   onToggleStep: (stepId: string, isCompleted: boolean) => void
-  onDelete: () => void
+  onDelete: () => Promise<void>
   onToggleStatus: () => void
 }
 
@@ -24,10 +25,18 @@ export function GroupTaskDetailsModal({
   onDelete,
   onToggleStatus,
 }: GroupTaskDetailsModalProps) {
+  const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const memberName = (userId: string | null) =>
     members.find((member) => member.user_id === userId)?.display_name ??
     (userId ? 'Group member' : 'Unassigned')
   const canEdit = group.role === 'owner' || task.created_by === currentUserId
+
+  async function handleConfirmDelete() {
+    setIsDeleting(true)
+    await onDelete()
+    setIsDeleting(false)
+  }
 
   return (
     <div
@@ -36,7 +45,7 @@ export function GroupTaskDetailsModal({
       aria-modal="true"
       aria-labelledby="group-task-title"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
+        if (event.target === event.currentTarget && !isDeleting) onClose()
       }}
     >
       <section className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
@@ -129,17 +138,40 @@ export function GroupTaskDetailsModal({
         </div>
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
+          {canEdit ? isConfirmingDelete ? (
+            <>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setIsConfirmingDelete(false)}
+                className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                Cancel delete
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => void handleConfirmDelete()}
+                className="rounded-md bg-rose-300 px-4 py-2 text-sm font-bold text-rose-950 transition hover:bg-rose-200 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isDeleting ? 'Deleting...' : 'Confirm delete'}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => setIsConfirmingDelete(true)}
+              className="rounded-md border border-rose-300/50 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Delete task
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={onDelete}
-            className="rounded-md border border-rose-300/50 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20"
-          >
-            Delete task
-          </button>
-          <button
-            type="button"
+            disabled={isDeleting}
             onClick={onToggleStatus}
-            className="rounded-md bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200"
+            className="rounded-md bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {task.status === 'Completed' ? 'Return to in progress' : 'Complete task'}
           </button>
