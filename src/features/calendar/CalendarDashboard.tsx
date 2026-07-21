@@ -30,6 +30,7 @@ export function CalendarDashboard({ tasks, isLoadingTasks, tasksError, onRefresh
   const today = useMemo(() => new Date(), [])
   const [visibleMonth, setVisibleMonth] = useState(() => monthStart(today))
   const [selectedDate, setSelectedDate] = useState(() => dateKey(today))
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false)
 
   const tasksByDate = useMemo(() => {
     const grouped = new Map<string, Task[]>()
@@ -68,6 +69,7 @@ export function CalendarDashboard({ tasks, isLoadingTasks, tasksError, onRefresh
 
   function selectDay(date: Date) {
     setSelectedDate(dateKey(date))
+    setIsDayModalOpen(true)
     if (date.getMonth() !== visibleMonth.getMonth() || date.getFullYear() !== visibleMonth.getFullYear()) {
       setVisibleMonth(monthStart(date))
     }
@@ -78,7 +80,13 @@ export function CalendarDashboard({ tasks, isLoadingTasks, tasksError, onRefresh
     setSelectedDate(dateKey(today))
   }
 
+  function openTaskFromDay(task: Task) {
+    setIsDayModalOpen(false)
+    onOpenTask(task)
+  }
+
   return (
+    <>
     <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-cyan-950/30">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div><h2 className="text-2xl font-bold">Calendar</h2><p className="mt-1 text-sm text-slate-300">See personal tasks on the dates they are due.</p></div>
@@ -114,14 +122,20 @@ export function CalendarDashboard({ tasks, isLoadingTasks, tasksError, onRefresh
         </div>
       </div>
 
-      <section className="mt-6 border-t border-white/10 pt-5">
-        <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-wider text-cyan-300">Selected day</p><h3 className="mt-1 text-xl font-bold">{new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(selectedDateObject)}</h3></div><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-slate-300">{selectedTasks.length} task{selectedTasks.length === 1 ? '' : 's'}</span></div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {isLoadingTasks ? <p className="text-sm text-slate-300">Loading tasks…</p> : null}
-          {!isLoadingTasks && selectedTasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-5 text-sm text-slate-300 md:col-span-2">No tasks are due on this day.</div> : null}
-          {selectedTasks.map((task) => <button key={task.id} type="button" onClick={() => onOpenTask(task)} className={`rounded-lg border bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent && task.status !== 'Completed' ? 'border-amber-300/60 hover:border-amber-200' : 'border-white/10 hover:border-cyan-300/70'}`}><div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3"><div className="min-w-0"><h4 className={`truncate font-semibold ${task.status === 'Completed' ? 'text-slate-400 line-through' : 'text-white'}`}>{task.title}</h4><p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="shrink-0 rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold text-slate-950">{task.points} pts</span></div><div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-slate-400"><span>{task.status}</span><span>{task.task_steps.length ? `${task.task_steps.filter((step) => step.is_completed).length}/${task.task_steps.length} steps` : 'No steps'}</span></div></button>)}
-        </div>
-      </section>
     </section>
+
+    {isDayModalOpen ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8" role="dialog" aria-modal="true" aria-labelledby="calendar-day-title" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsDayModalOpen(false) }}>
+        <section className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-wider text-cyan-300">Tasks due</p><h3 id="calendar-day-title" className="mt-2 text-2xl font-bold">{new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(selectedDateObject)}</h3><p className="mt-2 text-sm text-slate-300">{selectedTasks.length} task{selectedTasks.length === 1 ? '' : 's'} due on this day.</p></div><button type="button" onClick={() => setIsDayModalOpen(false)} className="shrink-0 rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200">Close</button></div>
+          <div className="mt-6 space-y-3">
+            {isLoadingTasks ? <p className="text-sm text-slate-300">Loading tasks…</p> : null}
+            {!isLoadingTasks && selectedTasks.length === 0 ? <div className="rounded-lg border border-dashed border-white/15 p-6 text-center"><p className="font-semibold text-white">Nothing due</p><p className="mt-2 text-sm text-slate-300">No tasks are due on this day.</p></div> : null}
+            {selectedTasks.map((task) => <button key={task.id} type="button" onClick={() => openTaskFromDay(task)} className={`w-full rounded-lg border bg-slate-900/70 p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-300 ${task.is_urgent && task.status !== 'Completed' ? 'border-amber-300/60 hover:border-amber-200' : 'border-white/10 hover:border-cyan-300/70'}`}><div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3"><div className="min-w-0"><h4 className={`truncate font-semibold ${task.status === 'Completed' ? 'text-slate-400 line-through' : 'text-white'}`} title={task.title}>{task.title}</h4><p className="mt-1 line-clamp-2 text-sm text-slate-300">{task.description || 'No description added.'}</p></div><span className="shrink-0 self-start rounded-full bg-cyan-300 px-3 py-1 text-xs font-bold leading-none text-slate-950">{task.points} pts</span></div><div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold text-slate-400"><span>{task.status}</span><span>{task.task_steps.length ? `${task.task_steps.filter((step) => step.is_completed).length}/${task.task_steps.length} steps` : 'No steps'}</span></div></button>)}
+          </div>
+        </section>
+      </div>
+    ) : null}
+    </>
   )
 }
