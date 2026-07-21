@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react'
 import type { Task } from '../tasks/taskService'
 import {
   getCurrentUserId,
@@ -9,6 +15,15 @@ import {
   type GroupMember,
   type GroupTask,
 } from '../groups/groupService'
+import {
+  createSavedReport,
+  deleteSavedReport,
+  getSavedReports,
+  updateSavedReport,
+  type ReportTemplate,
+  type SavedReport,
+  type SavedReportDraftData,
+} from './reportService'
 
 type WeeklyReportDashboardProps = {
   tasks: Task[]
@@ -17,10 +32,6 @@ type WeeklyReportDashboardProps = {
   onRefreshTasks: () => void
 }
 
-type ReportTemplate =
-  | 'weekly-progress'
-  | 'spreadsheet-progress'
-  | 'project-status-outline'
 type TaskComments = Record<string, string>
 
 type GroupReportTask = GroupTask & {
@@ -709,9 +720,18 @@ export function WeeklyReportDashboard({
   const [taskComments, setTaskComments] = useState<TaskComments>({})
   const [openCommentTaskIds, setOpenCommentTaskIds] = useState<string[]>([])
   const [copyMessage, setCopyMessage] = useState('')
-  const [isCompletedSectionOpen, setIsCompletedSectionOpen] = useState(true)
-  const [isProgressSectionOpen, setIsProgressSectionOpen] = useState(true)
-  const [isGroupSectionOpen, setIsGroupSectionOpen] = useState(true)
+  const [isCompletedSectionOpen, setIsCompletedSectionOpen] = useState(false)
+  const [isProgressSectionOpen, setIsProgressSectionOpen] = useState(false)
+  const [isGroupSectionOpen, setIsGroupSectionOpen] = useState(false)
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([])
+  const [activeSavedReportId, setActiveSavedReportId] = useState('')
+  const [activeSavedReportName, setActiveSavedReportName] = useState('')
+  const [isLoadingSavedReports, setIsLoadingSavedReports] = useState(true)
+  const [savedReportMessage, setSavedReportMessage] = useState('')
+  const [isSavedReportsOpen, setIsSavedReportsOpen] = useState(false)
+  const [isSaveReportOpen, setIsSaveReportOpen] = useState(false)
+  const [saveReportName, setSaveReportName] = useState('')
+  const [isSavingReport, setIsSavingReport] = useState(false)
 
   const startDate = useMemo(
     () => parseDateInput(periodStart) ?? getCurrentWeekStart(),
@@ -809,6 +829,34 @@ export function WeeklyReportDashboard({
     }
 
     void loadGroupReportTasks()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadSavedReportList() {
+      setIsLoadingSavedReports(true)
+      const response = await getSavedReports()
+
+      if (!isMounted) return
+
+      if (response.error) {
+        setSavedReportMessage(
+          response.error instanceof Error
+            ? response.error.message
+            : 'Saved reports could not be loaded.',
+        )
+      } else {
+        setSavedReports(response.data ?? [])
+      }
+      setIsLoadingSavedReports(false)
+    }
+
+    void loadSavedReportList()
 
     return () => {
       isMounted = false
@@ -1124,6 +1172,157 @@ export function WeeklyReportDashboard({
     )
   }
 
+  function getCurrentDraftData(): SavedReportDraftData {
+    return {
+      version: 1,
+      reportTemplate,
+      periodStart,
+      periodEnd,
+      selectedProgressTaskIds,
+      selectedCompletedTaskIds,
+      excludedCompletedTaskIds,
+      selectedGroupTaskIds,
+      taskComments,
+    }
+  }
+
+  function loadSavedReport(report: SavedReport) {
+    const draft = report.draft_data
+    const validTemplates: ReportTemplate[] = [
+      'weekly-progress',
+      'spreadsheet-progress',
+      'project-status-outline',
+    ]
+
+    setReportTemplate(
+      validTemplates.includes(draft.reportTemplate)
+        ? draft.reportTemplate
+        : 'weekly-progress',
+    )
+    setPeriodStart(draft.periodStart || toDateInputValue(getCurrentWeekStart()))
+    setPeriodEnd(draft.periodEnd || toDateInputValue(new Date()))
+    setSelectedProgressTaskIds(
+      Array.isArray(draft.selectedProgressTaskIds)
+        ? draft.selectedProgressTaskIds
+        : [],
+    )
+    setSelectedCompletedTaskIds(
+      Array.isArray(draft.selectedCompletedTaskIds)
+        ? draft.selectedCompletedTaskIds
+        : [],
+    )
+    setExcludedCompletedTaskIds(
+      Array.isArray(draft.excludedCompletedTaskIds)
+        ? draft.excludedCompletedTaskIds
+        : [],
+    )
+    setSelectedGroupTaskIds(
+      Array.isArray(draft.selectedGroupTaskIds)
+        ? draft.selectedGroupTaskIds
+        : [],
+    )
+    setTaskComments(
+      draft.taskComments && typeof draft.taskComments === 'object'
+        ? draft.taskComments
+        : {},
+    )
+    setOpenCommentTaskIds([])
+    setCompletedTaskSearch('')
+    setCompletedTaskTagFilter('')
+    setProgressTaskSearch('')
+    setProgressTaskTagFilter('')
+    setGroupTaskSearch('')
+    setActiveSavedReportId(report.id)
+    setActiveSavedReportName(report.name)
+    setSavedReportMessage(`Loaded “${report.name}”.`)
+    setIsSavedReportsOpen(false)
+  }
+
+  function startNewReport() {
+    setReportTemplate('weekly-progress')
+    setPeriodStart(toDateInputValue(getCurrentWeekStart()))
+    setPeriodEnd(toDateInputValue(new Date()))
+    setSelectedProgressTaskIds([])
+    setSelectedCompletedTaskIds([])
+    setExcludedCompletedTaskIds([])
+    setSelectedGroupTaskIds([])
+    setTaskComments({})
+    setOpenCommentTaskIds([])
+    setCompletedTaskSearch('')
+    setCompletedTaskTagFilter('')
+    setProgressTaskSearch('')
+    setProgressTaskTagFilter('')
+    setGroupTaskSearch('')
+    setActiveSavedReportId('')
+    setActiveSavedReportName('')
+    setSavedReportMessage('Started a new report.')
+  }
+
+  function openSaveReportDialog() {
+    setSaveReportName(
+      activeSavedReportName || `${reportTitle} - ${formatDate(periodEnd)}`,
+    )
+    setSavedReportMessage('')
+    setIsSaveReportOpen(true)
+  }
+
+  async function handleSaveReport(event: FormEvent) {
+    event.preventDefault()
+    if (!saveReportName.trim()) return
+
+    setIsSavingReport(true)
+    const response = activeSavedReportId
+      ? await updateSavedReport(
+          activeSavedReportId,
+          saveReportName,
+          getCurrentDraftData(),
+        )
+      : await createSavedReport(saveReportName, getCurrentDraftData())
+
+    if (response.error || !response.data) {
+      setSavedReportMessage(
+        response.error instanceof Error
+          ? response.error.message
+          : 'The report could not be saved.',
+      )
+      setIsSavingReport(false)
+      return
+    }
+
+    const savedReport = response.data
+    setSavedReports((current) => [
+      savedReport,
+      ...current.filter((report) => report.id !== savedReport.id),
+    ])
+    setActiveSavedReportId(savedReport.id)
+    setActiveSavedReportName(savedReport.name)
+    setSavedReportMessage(`Saved “${savedReport.name}”.`)
+    setIsSavingReport(false)
+    setIsSaveReportOpen(false)
+  }
+
+  async function handleDeleteSavedReport(report: SavedReport) {
+    if (!window.confirm(`Delete the saved report “${report.name}”?`)) return
+    const response = await deleteSavedReport(report.id)
+    if (response.error) {
+      setSavedReportMessage(
+        response.error instanceof Error
+          ? response.error.message
+          : 'The saved report could not be deleted.',
+      )
+      return
+    }
+
+    setSavedReports((current) =>
+      current.filter((savedReport) => savedReport.id !== report.id),
+    )
+    if (activeSavedReportId === report.id) {
+      setActiveSavedReportId('')
+      setActiveSavedReportName('')
+    }
+    setSavedReportMessage(`Deleted “${report.name}”.`)
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] weekly-report-screen">
       <section className="min-w-0 space-y-6 print:hidden">
@@ -1135,19 +1334,56 @@ export function WeeklyReportDashboard({
                 Completed tasks are pulled from the selected dates. Add open
                 tasks below when the report needs a progress section too.
               </p>
+              {activeSavedReportName ? (
+                <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-cyan-200">
+                  Editing saved report: {activeSavedReportName}
+                </p>
+              ) : null}
             </div>
-            <button
-              type="button"
-              onClick={onRefreshTasks}
-              className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
-            >
-              Refresh
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSavedReportsOpen(true)}
+                className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+              >
+                Saved reports{savedReports.length ? ` (${savedReports.length})` : ''}
+              </button>
+              {reportTaskCount > 0 || activeSavedReportId ? (
+                <button
+                  type="button"
+                  onClick={openSaveReportDialog}
+                  className="rounded-md bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+                >
+                  {activeSavedReportId ? 'Save changes' : 'Save report'}
+                </button>
+              ) : null}
+              {activeSavedReportId ? (
+                <button
+                  type="button"
+                  onClick={startNewReport}
+                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+                >
+                  New report
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onRefreshTasks}
+                className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
 
           {tasksError ? (
             <p className="mt-4 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
               Tasks could not be loaded: {tasksError}
+            </p>
+          ) : null}
+          {savedReportMessage ? (
+            <p className="mt-4 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+              {savedReportMessage}
             </p>
           ) : null}
 
@@ -1745,6 +1981,156 @@ export function WeeklyReportDashboard({
         </div>
         )}
       </section>
+
+      {isSavedReportsOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8 print:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="saved-reports-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setIsSavedReportsOpen(false)
+          }}
+        >
+          <section className="max-h-full w-full max-w-2xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-cyan-300">
+                  Reports
+                </p>
+                <h2 id="saved-reports-title" className="mt-2 text-2xl font-bold">
+                  Saved reports
+                </h2>
+                <p className="mt-2 text-sm text-slate-300">
+                  Open a draft to continue working with its saved task selections and notes.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSavedReportsOpen(false)}
+                className="shrink-0 rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200"
+              >
+                Close
+              </button>
+            </div>
+
+            {savedReportMessage ? (
+              <p className="mt-4 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+                {savedReportMessage}
+              </p>
+            ) : null}
+
+            <div className="mt-6 space-y-3">
+              {isLoadingSavedReports ? (
+                <p className="text-sm text-slate-300">Loading saved reports...</p>
+              ) : null}
+              {!isLoadingSavedReports && savedReports.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-white/15 p-6 text-center">
+                  <p className="font-semibold text-white">No saved reports yet</p>
+                  <p className="mt-2 text-sm text-slate-300">
+                    Add tasks to a report, then use Save report to keep it for later.
+                  </p>
+                </div>
+              ) : null}
+              {savedReports.map((report) => (
+                <article
+                  key={report.id}
+                  className={`rounded-lg border p-4 ${activeSavedReportId === report.id ? 'border-cyan-300/50 bg-cyan-300/10' : 'border-white/10 bg-slate-900/70'}`}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-white" title={report.name}>
+                        {report.name}
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-300">
+                        {formatDate(report.draft_data.periodStart)} - {formatDate(report.draft_data.periodEnd)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">
+                        Updated {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(report.updated_at))}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => loadSavedReport(report)}
+                        className="rounded-md bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200"
+                      >
+                        {activeSavedReportId === report.id ? 'Reload' : 'Open'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteSavedReport(report)}
+                        className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isSaveReportOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 print:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="save-report-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isSavingReport) {
+              setIsSaveReportOpen(false)
+            }
+          }}
+        >
+          <form
+            onSubmit={(event) => void handleSaveReport(event)}
+            className="w-full max-w-md rounded-xl border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60"
+          >
+            <h2 id="save-report-title" className="text-2xl font-bold">
+              {activeSavedReportId ? 'Save report changes' : 'Save report'}
+            </h2>
+            <p className="mt-2 text-sm text-slate-300">
+              The selected tasks, date range, template, and report notes will be saved.
+            </p>
+            {savedReportMessage ? (
+              <p className="mt-4 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
+                {savedReportMessage}
+              </p>
+            ) : null}
+            <label className="mt-5 block text-sm font-medium text-slate-200">
+              Report name
+              <input
+                required
+                autoFocus
+                maxLength={120}
+                value={saveReportName}
+                onChange={(event) => setSaveReportName(event.target.value)}
+                className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+              />
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={isSavingReport}
+                onClick={() => setIsSaveReportOpen(false)}
+                className="rounded-md border border-white/15 px-4 py-2 font-semibold transition hover:border-cyan-300 hover:text-cyan-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingReport}
+                className="rounded-md bg-cyan-300 px-4 py-2 font-bold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isSavingReport ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   )
 }
