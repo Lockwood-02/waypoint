@@ -23,6 +23,7 @@ import {
   type GroupMember,
   type GroupMessage,
   type GroupTask,
+  type GroupType,
 } from './groupService'
 import { GroupTaskFormModal } from './GroupTaskFormModal'
 import { GroupTaskDetailsModal } from './GroupTaskDetailsModal'
@@ -64,6 +65,7 @@ export function GroupsDashboard({ onPointsChanged }: GroupsDashboardProps) {
   const [renameGroupName, setRenameGroupName] = useState('')
   const [renameGroupDescription, setRenameGroupDescription] = useState('')
   const [groupDescription, setGroupDescription] = useState('')
+  const [groupType, setGroupType] = useState<GroupType>('standard')
   const [inviteCode, setInviteCode] = useState('')
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDescription, setTaskDescription] = useState('')
@@ -157,10 +159,10 @@ export function GroupsDashboard({ onPointsChanged }: GroupsDashboardProps) {
 
   async function handleCreateGroup(event: FormEvent) {
     event.preventDefault()
-    const response = await createGroup(groupName, groupDescription)
+    const response = await createGroup(groupName, groupDescription, groupType)
     if (response.error) return setMessage(errorMessage(response.error))
-    setGroupName(''); setGroupDescription(''); setShowCreateGroup(false)
-    setMessage('Group created. Share its invite link when you are ready.')
+    setGroupName(''); setGroupDescription(''); setGroupType('standard'); setShowCreateGroup(false)
+    setMessage(`${groupType === 'business' ? 'Business group' : 'Group'} created. Share its invite code when you are ready.`)
     await loadGroups()
   }
 
@@ -188,8 +190,11 @@ export function GroupsDashboard({ onPointsChanged }: GroupsDashboardProps) {
   }
 
   function openEditTask(task: GroupTask) {
-    if (selectedGroup?.role !== 'owner' && task.created_by !== currentUserId) {
-      setMessage('Only the group owner or task creator can edit this task.')
+    const isRestrictedBusinessTask = selectedGroup?.group_type === 'business'
+      && selectedGroup.role !== 'owner'
+      && task.created_by !== currentUserId
+    if (isRestrictedBusinessTask) {
+      setMessage('Only the group owner or task creator can edit a business group task.')
       return
     }
     setEditingTask(task)
@@ -401,7 +406,10 @@ export function GroupsDashboard({ onPointsChanged }: GroupsDashboardProps) {
               <div key={group.id} className={`flex min-w-0 items-stretch rounded-lg border transition ${selectedGroupId === group.id ? 'border-cyan-300/50 bg-cyan-300/10' : 'border-transparent hover:bg-white/[0.05]'}`}>
                 <button type="button" onClick={() => { setSelectedGroupId(group.id); setActiveGroupView('tasks') }} className="min-w-0 flex-1 p-3 text-left">
                   <span className="block truncate font-semibold text-white" title={group.name}>{group.name}</span>
-                  <span className="mt-1 block text-xs text-slate-400">{group.member_count} member{group.member_count === 1 ? '' : 's'}</span>
+                  <span className="mt-1 flex items-center gap-2 text-xs text-slate-400">
+                    <span>{group.member_count} member{group.member_count === 1 ? '' : 's'}</span>
+                    {group.group_type === 'business' ? <span className="rounded-full border border-violet-300/30 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-violet-200">Business</span> : null}
+                  </span>
                 </button>
                 <button type="button" onClick={() => { setSelectedGroupId(group.id); setActiveGroupView('members') }} aria-label={`View members of ${group.name}`} title="View group members" className={`m-2 ml-0 flex w-9 shrink-0 items-center justify-center rounded-md border transition ${selectedGroupId === group.id && activeGroupView === 'members' ? 'border-cyan-300 bg-cyan-300 text-slate-950' : 'border-white/15 text-slate-300 hover:border-cyan-300 hover:text-cyan-200'}`}>
                   <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
@@ -413,7 +421,7 @@ export function GroupsDashboard({ onPointsChanged }: GroupsDashboardProps) {
 
         <div className="p-5 md:p-7">
           {selectedGroup ? <>
-            <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex items-center gap-2"><h2 className="text-2xl font-bold">{selectedGroup.name}</h2>{selectedGroup.role === 'owner' ? <button type="button" onClick={openRenameGroup} aria-label="Rename group" title="Rename group" className="rounded-md border border-white/15 px-2 py-1 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300 hover:text-cyan-200">&#9998;</button> : null}<span className="rounded-full border border-white/15 px-2 py-1 text-xs capitalize text-slate-300">{selectedGroup.role}</span></div><p className="mt-2 text-sm text-slate-300">{selectedGroup.description || 'A shared place for your team’s tasks.'}</p></div><div className="flex flex-wrap gap-2"><button onClick={copyInviteCode} className="rounded-md border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-cyan-100 hover:border-cyan-200">Copy invite code</button>{selectedGroup.role === 'owner' ? <><button onClick={rotateInvite} className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 hover:text-white">Reset code</button><button onClick={() => { setMessage(''); setGroupConfirmation('delete') }} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950">Delete group</button></> : <button onClick={() => { setMessage(''); setGroupConfirmation('leave') }} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20">Leave</button>}</div></div>
+            <div className="flex flex-wrap items-start justify-between gap-4"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-2xl font-bold">{selectedGroup.name}</h2>{selectedGroup.role === 'owner' ? <button type="button" onClick={openRenameGroup} aria-label="Rename group" title="Rename group" className="rounded-md border border-white/15 px-2 py-1 text-sm font-semibold text-cyan-100 transition hover:border-cyan-300 hover:text-cyan-200">&#9998;</button> : null}<span className="rounded-full border border-white/15 px-2 py-1 text-xs capitalize text-slate-300">{selectedGroup.role}</span><span className={`rounded-full border px-2 py-1 text-xs font-semibold ${selectedGroup.group_type === 'business' ? 'border-violet-300/30 bg-violet-300/10 text-violet-100' : 'border-white/15 text-slate-300'}`}>{selectedGroup.group_type === 'business' ? 'Business group' : 'Standard group'}</span></div><p className="mt-2 text-sm text-slate-300">{selectedGroup.description || 'A shared place for your team’s tasks.'}</p></div><div className="flex flex-wrap gap-2"><button onClick={copyInviteCode} className="rounded-md border border-cyan-300/40 px-3 py-2 text-sm font-semibold text-cyan-100 hover:border-cyan-200">Copy invite code</button>{selectedGroup.role === 'owner' ? <><button onClick={rotateInvite} className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 hover:text-white">Reset code</button><button onClick={() => { setMessage(''); setGroupConfirmation('delete') }} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950">Delete group</button></> : <button onClick={() => { setMessage(''); setGroupConfirmation('leave') }} className="rounded-md border border-rose-300/50 px-3 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200 hover:bg-rose-300 hover:text-rose-950 hover:shadow-lg hover:shadow-rose-500/20">Leave</button>}</div></div>
             <div className="mt-6 flex gap-2 border-b border-white/10 pb-3">
               <button type="button" onClick={() => setActiveGroupView('tasks')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'tasks' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Tasks</button>
               <button type="button" onClick={() => setActiveGroupView('chat')} className={`rounded-md px-4 py-2 text-sm font-semibold transition ${activeGroupView === 'chat' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:bg-white/[0.06] hover:text-white'}`}>Chat</button>
@@ -517,7 +525,33 @@ export function GroupsDashboard({ onPointsChanged }: GroupsDashboardProps) {
         </div>
       ) : null}
 
-      {showCreateGroup ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"><form onSubmit={handleCreateGroup} className="w-full max-w-lg rounded-xl border border-white/10 bg-slate-950 p-6"><h2 className="text-2xl font-bold">Create a group</h2><label className="mt-5 block text-sm">Name<input required maxLength={80} value={groupName} onChange={(e) => setGroupName(e.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><label className="mt-4 block text-sm">Description<textarea maxLength={500} value={groupDescription} onChange={(e) => setGroupDescription(e.target.value)} className="mt-2 min-h-24 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => setShowCreateGroup(false)} className="rounded-md border border-white/15 px-4 py-2 font-semibold transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">Cancel</button><button className="rounded-md bg-cyan-300 px-4 py-2 font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950">Create</button></div></form></div> : null}
+      {showCreateGroup ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
+          <form onSubmit={handleCreateGroup} className="max-h-full w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-slate-950 p-6">
+            <h2 className="text-2xl font-bold">Create a group</h2>
+            <p className="mt-2 text-sm text-slate-300">Choose how work and task permissions should be managed.</p>
+            <fieldset className="mt-5">
+              <legend className="text-sm font-semibold">Group type</legend>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <label className={`cursor-pointer rounded-lg border p-4 transition ${groupType === 'standard' ? 'border-cyan-300 bg-cyan-300/10' : 'border-white/10 hover:border-white/25'}`}>
+                  <span className="flex items-center gap-2 font-semibold"><input type="radio" name="group-type" value="standard" checked={groupType === 'standard'} onChange={() => setGroupType('standard')} className="accent-cyan-300" /> Standard</span>
+                  <span className="mt-2 block text-xs leading-5 text-slate-300">All members can update steps and complete shared tasks, as they do today.</span>
+                </label>
+                <label className={`cursor-pointer rounded-lg border p-4 transition ${groupType === 'business' ? 'border-violet-300 bg-violet-300/10' : 'border-white/10 hover:border-white/25'}`}>
+                  <span className="flex items-center gap-2 font-semibold"><input type="radio" name="group-type" value="business" checked={groupType === 'business'} onChange={() => setGroupType('business')} className="accent-violet-300" /> Business</span>
+                  <span className="mt-2 block text-xs leading-5 text-slate-300">Employees update their assigned steps. Owners and task creators control every step and complete tasks.</span>
+                </label>
+              </div>
+            </fieldset>
+            <label className="mt-5 block text-sm">Name<input required maxLength={80} value={groupName} onChange={(e) => setGroupName(e.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label>
+            <label className="mt-4 block text-sm">Description<textarea maxLength={500} value={groupDescription} onChange={(e) => setGroupDescription(e.target.value)} className="mt-2 min-h-24 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => { setShowCreateGroup(false); setGroupType('standard') }} className="rounded-md border border-white/15 px-4 py-2 font-semibold transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">Cancel</button>
+              <button className="rounded-md bg-cyan-300 px-4 py-2 font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950">Create</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
       {showRenameGroup ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"><form onSubmit={handleRenameGroup} className="w-full max-w-md rounded-xl border border-white/10 bg-slate-950 p-6"><h2 className="text-2xl font-bold">Edit group details</h2><p className="mt-2 text-sm text-slate-300">Update the name and description everyone sees for this group.</p><label className="mt-5 block text-sm">Group name<input required autoFocus maxLength={80} value={renameGroupName} onChange={(e) => setRenameGroupName(e.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><label className="mt-4 block text-sm">Description<textarea maxLength={500} value={renameGroupDescription} onChange={(e) => setRenameGroupDescription(e.target.value)} className="mt-2 min-h-24 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3" /></label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowRenameGroup(false); setRenameGroupName(''); setRenameGroupDescription('') }} className="rounded-md border border-white/15 px-4 py-2">Cancel</button><button className="rounded-md bg-cyan-300 px-4 py-2 font-bold text-slate-950">Save details</button></div></form></div> : null}
       {showJoinGroup ? <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"><form onSubmit={handleJoinGroup} className="w-full max-w-md rounded-xl border border-white/10 bg-slate-950 p-6"><h2 className="text-2xl font-bold">Join a group</h2><p className="mt-2 text-sm text-slate-300">Enter the invite code shared by the group owner.</p><label className="mt-5 block text-sm">Invite code<input required autoFocus autoCapitalize="characters" maxLength={20} value={inviteCode} onChange={(e) => setInviteCode(e.target.value.toUpperCase())} placeholder="Enter code" className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 font-mono uppercase tracking-widest" /></label><div className="mt-5 flex justify-end gap-2"><button type="button" onClick={() => { setShowJoinGroup(false); setInviteCode('') }} className="rounded-md border border-white/15 px-4 py-2 font-semibold transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">Cancel</button><button className="rounded-md bg-cyan-300 px-4 py-2 font-bold text-slate-950 transition hover:bg-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950">Join</button></div></form></div> : null}
       {showCreateTask ? <GroupTaskFormModal isEditing={Boolean(editingTask)} title={taskTitle} description={taskDescription} points={taskPoints} isUrgent={taskUrgent} dueDate={taskDueDate} steps={taskSteps} members={members} onTitleChange={setTaskTitle} onDescriptionChange={setTaskDescription} onPointsChange={setTaskPoints} onUrgencyChange={setTaskUrgent} onDueDateChange={setTaskDueDate} onStepsChange={setTaskSteps} onClose={closeTaskForm} onSubmit={handleCreateTask} /> : null}

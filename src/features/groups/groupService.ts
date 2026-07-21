@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabaseClient'
 import type { TaskStatus } from '../tasks/taskService'
 
 export type GroupRole = 'owner' | 'member'
+export type GroupType = 'standard' | 'business'
 
 export type Group = {
   id: string
@@ -14,6 +15,7 @@ export type Group = {
   updated_at: string
   member_count: number
   role: GroupRole
+  group_type: GroupType
 }
 
 export type GroupTask = {
@@ -101,13 +103,14 @@ export async function getGroups() {
   return { data: [...groupsById.values()], error: null }
 }
 
-export async function createGroup(name: string, description: string) {
+export async function createGroup(name: string, description: string, groupType: GroupType) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { data: null, error: userError ?? new Error('Not logged in') }
 
-  return supabase.rpc('create_group', {
+  return supabase.rpc('create_typed_group', {
     group_name: name.trim(),
     group_description: description.trim() || null,
+    requested_group_type: groupType,
   })
 }
 
@@ -284,7 +287,10 @@ export async function updateGroupTask(task: GroupTask, title: string, descriptio
 }
 
 export async function updateGroupTaskStepCompletion(stepId: string, isCompleted: boolean) {
-  return supabase.from('group_task_steps').update({ is_completed: isCompleted }).eq('id', stepId).select().single()
+  return supabase.rpc('set_group_task_step_completion', {
+    target_step_id: stepId,
+    should_complete: isCompleted,
+  })
 }
 
 export type GroupTaskCompletionResult = {

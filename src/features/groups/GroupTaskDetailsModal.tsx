@@ -32,7 +32,12 @@ export function GroupTaskDetailsModal({
   const memberName = (userId: string | null) =>
     members.find((member) => member.user_id === userId)?.display_name ??
     (userId ? 'Group member' : 'Unassigned')
-  const canEdit = group.role === 'owner' || task.created_by === currentUserId
+  const canManageTask = group.role === 'owner' || task.created_by === currentUserId
+  const isBusinessGroup = group.group_type === 'business'
+  const canEdit = !isBusinessGroup || canManageTask
+  const canCompleteTask = !isBusinessGroup || canManageTask
+  const canToggleStep = (assignedTo: string | null) =>
+    !isBusinessGroup || canManageTask || assignedTo === currentUserId
 
   async function handleConfirmDelete() {
     setIsDeleting(true)
@@ -123,9 +128,10 @@ export function GroupTaskDetailsModal({
                   <input
                     type="checkbox"
                     checked={step.is_completed}
-                    disabled={task.status === 'Completed'}
+                    disabled={task.status === 'Completed' || !canToggleStep(step.assigned_to)}
                     onChange={(event) => onToggleStep(step.id, event.target.checked)}
-                    className="mt-1 h-4 w-4 accent-cyan-300"
+                    title={!canToggleStep(step.assigned_to) ? 'Only the assignee, task creator, or group owner can update this step.' : undefined}
+                    className="mt-1 h-4 w-4 accent-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <span className={`text-sm ${step.is_completed ? 'text-slate-400 line-through' : 'text-slate-100'}`}>
                     {step.title}
@@ -145,8 +151,14 @@ export function GroupTaskDetailsModal({
           </p>
         ) : null}
 
+        {isBusinessGroup && !canCompleteTask ? (
+          <p className="mt-5 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-slate-300">
+            In business groups, only the group owner or task creator can complete the full task. You can still update steps assigned to you.
+          </p>
+        ) : null}
+
         <div className="mt-6 flex flex-wrap justify-end gap-3">
-          {canEdit ? isConfirmingDelete ? (
+          {canManageTask ? isConfirmingDelete ? (
             <>
               <button
                 type="button"
@@ -175,14 +187,16 @@ export function GroupTaskDetailsModal({
               Delete task
             </button>
           ) : null}
-          <button
-            type="button"
-            disabled={isDeleting}
-            onClick={onToggleStatus}
-            className="rounded-md bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {task.status === 'Completed' ? 'Return to in progress' : 'Complete task'}
-          </button>
+          {canCompleteTask ? (
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={onToggleStatus}
+              className="rounded-md bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {task.status === 'Completed' ? 'Return to in progress' : 'Complete task'}
+            </button>
+          ) : null}
         </div>
       </section>
     </div>

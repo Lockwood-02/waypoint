@@ -21,8 +21,8 @@ export const initialTaskFormState: TaskFormState = {
 
 // Increment the tenths place for major releases and the hundredths/thousandths
 // places for smaller feature or patch releases.
-export const appVersion = 'v0.6'
-export const changelogVersion = appVersion
+export const appVersion = 'v0.7.1'
+export const changelogVersion = 'v0.7'
 
 export const colorwayOptions: ColorwayOption[] = [
   { id: 'midnight', label: 'Midnight', description: 'The original cool blue Waypoint palette.', swatches: ['#020617', '#164e63', '#67e8f9'] },

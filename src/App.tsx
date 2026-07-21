@@ -1206,10 +1206,10 @@ function App() {
                 What&apos;s new in {appVersion}
               </p>
               <h2 id="changelog-modal-title" className="mt-2 text-3xl font-bold">
-                A more complete Waypoint
+                Business groups have arrived
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Organize your work, collaborate with groups, and keep progress visible across every dashboard.
+                Create structured workspaces where managers and task creators control completion while employees manage the steps assigned to them.
               </p>
 
               <div className="mt-6 space-y-3">
@@ -1232,9 +1232,9 @@ function App() {
                   </p>
                 </article>
                 <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">
-                  <h3 className="font-bold text-cyan-100">Stronger groups and rewards</h3>
+                  <h3 className="font-bold text-cyan-100">Standard and business groups</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Group task permissions and confirmations are clearer, while the rebalanced point economy makes profile rewards meaningful milestones.
+                    Standard groups let every member edit shared tasks, while business groups reserve task-level control for owners and task creators.
                   </p>
                 </article>
               </div>
