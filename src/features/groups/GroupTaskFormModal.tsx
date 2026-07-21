@@ -9,12 +9,14 @@ type GroupTaskFormModalProps = {
   description: string
   points: string
   isUrgent: boolean
+  dueDate: string
   steps: StepDraft[]
   members: GroupMember[]
   onTitleChange: (value: string) => void
   onDescriptionChange: (value: string) => void
   onPointsChange: (value: string) => void
   onUrgencyChange: (value: boolean) => void
+  onDueDateChange: (value: string) => void
   onStepsChange: (steps: StepDraft[]) => void
   onClose: () => void
   onSubmit: (event: FormEvent) => void
@@ -26,12 +28,14 @@ export function GroupTaskFormModal({
   description,
   points,
   isUrgent,
+  dueDate,
   steps,
   members,
   onTitleChange,
   onDescriptionChange,
   onPointsChange,
   onUrgencyChange,
+  onDueDateChange,
   onStepsChange,
   onClose,
   onSubmit,
@@ -55,6 +59,7 @@ export function GroupTaskFormModal({
           <label className="block"><span className="text-sm font-medium text-slate-200">Title</span><input required maxLength={160} value={title} onChange={(event) => onTitleChange(event.target.value)} placeholder="Plan the next group milestone" className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
           <label className="block"><span className="text-sm font-medium text-slate-200">Description</span><textarea value={description} onChange={(event) => onDescriptionChange(event.target.value)} placeholder="Add the shared task details here." className="mt-2 min-h-28 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
           <label className="block"><span className="text-sm font-medium text-slate-200">Points</span><input type="number" min="0" required value={points} onChange={(event) => onPointsChange(event.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
+          <label className="block"><span className="text-sm font-medium text-slate-200">Due date <span className="font-normal text-slate-400">(optional)</span></span><input type="date" value={dueDate} onChange={(event) => onDueDateChange(event.target.value)} className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30" /></label>
 
           <div>
             <div className="flex items-center justify-between gap-3"><p className="text-sm font-medium text-slate-200">Checklist steps</p><button type="button" onClick={() => onStepsChange([...steps, { title: '', assignedTo: '' }])} className="rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300">Add step</button></div>

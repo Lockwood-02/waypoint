@@ -17,6 +17,7 @@ export type TaskFormState = {
   tagId: string
   newTagName: string
   isUrgent: boolean
+  dueDate: string
 }
 
 export type ColorwayOption = {

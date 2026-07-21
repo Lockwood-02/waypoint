@@ -57,6 +57,7 @@ export type CreateTaskInput = {
   tagId?: string
   newTagName?: string
   isUrgent: boolean
+  dueDate?: string
 }
 
 export type UpdateTaskInput = CreateTaskInput
@@ -213,6 +214,7 @@ export async function createTask(input: CreateTaskInput) {
       points: input.points,
       status: 'Not Started' satisfies TaskStatus,
       is_urgent: input.isUrgent,
+      due_date: input.dueDate || null,
     })
     .select()
     .single()
@@ -307,6 +309,7 @@ export async function updateTask(taskId: string, input: UpdateTaskInput) {
       description: input.description ?? '',
       points: input.points,
       is_urgent: input.isUrgent,
+      due_date: input.dueDate || null,
       updated_at: updatedAt,
     })
     .eq('id', taskId)

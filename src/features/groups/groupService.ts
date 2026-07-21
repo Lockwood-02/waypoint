@@ -24,6 +24,7 @@ export type GroupTask = {
   status: TaskStatus
   points: number
   is_urgent: boolean
+  due_date: string | null
   created_at: string
   updated_at: string
   group_task_steps: GroupTaskStep[]
@@ -201,7 +202,7 @@ export async function deleteGroup(groupId: string) {
   return supabase.from('groups').delete().eq('id', groupId)
 }
 
-export async function createGroupTask(groupId: string, title: string, description: string, points: number, isUrgent: boolean, steps: CreateGroupTaskStepInput[]) {
+export async function createGroupTask(groupId: string, title: string, description: string, points: number, isUrgent: boolean, dueDate: string, steps: CreateGroupTaskStepInput[]) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { data: null, error: userError ?? new Error('Not logged in') }
   const taskResponse = await supabase.from('group_tasks').insert({
@@ -211,6 +212,7 @@ export async function createGroupTask(groupId: string, title: string, descriptio
     description: description.trim(),
     points,
     is_urgent: isUrgent,
+    due_date: dueDate || null,
   }).select().single()
 
   if (taskResponse.error || !taskResponse.data) return taskResponse
@@ -236,12 +238,13 @@ export async function createGroupTask(groupId: string, title: string, descriptio
   return { data: taskResponse.data, error: null }
 }
 
-export async function updateGroupTask(task: GroupTask, title: string, description: string, points: number, isUrgent: boolean, steps: CreateGroupTaskStepInput[]) {
+export async function updateGroupTask(task: GroupTask, title: string, description: string, points: number, isUrgent: boolean, dueDate: string, steps: CreateGroupTaskStepInput[]) {
   const taskResponse = await supabase.from('group_tasks').update({
     title: title.trim(),
     description: description.trim(),
     points,
     is_urgent: isUrgent,
+    due_date: dueDate || null,
     updated_at: new Date().toISOString(),
   }).eq('id', task.id).select().single()
 

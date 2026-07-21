@@ -16,6 +16,7 @@ export const initialTaskFormState: TaskFormState = {
   tagId: '',
   newTagName: '',
   isUrgent: false,
+  dueDate: '',
 }
 
 export const changelogVersion = 'groups-chat-flares-2026-07'

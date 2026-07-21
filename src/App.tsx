@@ -32,6 +32,7 @@ import { supabase } from './lib/supabaseClient'
 import { AppNavigation } from './components/AppNavigation'
 import { SettingsModal } from './components/SettingsModal'
 import { PointShopModal } from './components/PointShopModal'
+import { TaskDueIndicator } from './components/TaskDueIndicator'
 import { changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
 import type { ActiveDashboard, AuthMode, AuthState, Colorway, ShopItem, TaskCompletionFilter, TaskFormState } from './types/app'
 
@@ -596,6 +597,7 @@ function App() {
       tagId: currentTag?.id ?? '',
       newTagName: '',
       isUrgent: task.is_urgent,
+      dueDate: task.due_date ?? '',
     })
     setTaskActionMessage('')
     setSelectedTask(null)
@@ -616,6 +618,7 @@ function App() {
       tagId: taskForm.newTagName.trim() ? undefined : taskForm.tagId,
       newTagName: taskForm.newTagName,
       isUrgent: taskForm.isUrgent,
+      dueDate: taskForm.dueDate,
     }
 
     const { data, error } = editingTask
@@ -1123,6 +1126,9 @@ function App() {
                             ? `${completedSteps}/${totalSteps} steps`
                             : 'No steps'}
                         </span>
+                        {task.status !== 'Completed' ? (
+                          <TaskDueIndicator dueDate={task.due_date} />
+                        ) : null}
                         {taskTag ? <span>{taskTag.name}</span> : null}
                       </div>
                     </button>
@@ -1321,6 +1327,23 @@ function App() {
                       }))
                     }
                     className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-200">
+                    Due date <span className="font-normal text-slate-400">(optional)</span>
+                  </span>
+                  <input
+                    type="date"
+                    value={taskForm.dueDate}
+                    onChange={(event) =>
+                      setTaskForm((current) => ({
+                        ...current,
+                        dueDate: event.target.value,
+                      }))
+                    }
+                    className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
                   />
                 </label>
 
@@ -1661,6 +1684,11 @@ function App() {
                 <span className="rounded-full border border-white/15 px-3 py-1 text-xs font-semibold text-slate-200">
                   {selectedTask.status}
                 </span>
+                {selectedTask.status !== 'Completed' && selectedTask.due_date ? (
+                  <span className="rounded-full border border-white/15 px-3 py-1">
+                    <TaskDueIndicator dueDate={selectedTask.due_date} />
+                  </span>
+                ) : null}
                 {selectedTask.is_urgent ? (
                   <span className="rounded-full border border-amber-300/50 bg-amber-300/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-100">
                     Urgent

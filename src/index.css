@@ -64,6 +64,17 @@
   color: #ffffff;
 }
 
+/* Keep task-detail metadata pills vertically aligned when a due-date pill is present. */
+[aria-labelledby="task-modal-title"] section > .mt-5.flex > span,
+[aria-labelledby="group-task-title"] section > .mt-5.flex > span {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 @media print {
   body {
     background: white;
