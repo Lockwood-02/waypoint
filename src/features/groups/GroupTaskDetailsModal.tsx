@@ -7,6 +7,7 @@ type GroupTaskDetailsModalProps = {
   group: Group
   members: GroupMember[]
   currentUserId: string
+  actionMessage?: string
   onClose: () => void
   onEdit: () => void
   onToggleStep: (stepId: string, isCompleted: boolean) => void
@@ -19,6 +20,7 @@ export function GroupTaskDetailsModal({
   group,
   members,
   currentUserId,
+  actionMessage = '',
   onClose,
   onEdit,
   onToggleStep,
@@ -136,6 +138,12 @@ export function GroupTaskDetailsModal({
             ))}
           </div>
         </div>
+
+        {actionMessage ? (
+          <p className="mt-5 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
+            {actionMessage}
+          </p>
+        ) : null}
 
         <div className="mt-6 flex flex-wrap justify-end gap-3">
           {canEdit ? isConfirmingDelete ? (

@@ -16,7 +16,7 @@ import {
   rotateGroupInvite,
   updateGroupDetails,
   updateGroupTask,
-  updateGroupTaskStatus,
+  setGroupTaskCompletion,
   updateGroupTaskStepCompletion,
   updateGroupMessage,
   type Group,
@@ -35,7 +35,11 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Something went wrong.'
 }
 
-export function GroupsDashboard() {
+type GroupsDashboardProps = {
+  onPointsChanged?: () => Promise<void> | void
+}
+
+export function GroupsDashboard({ onPointsChanged }: GroupsDashboardProps) {
   const [groups, setGroups] = useState<Group[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState('')
   const [tasks, setTasks] = useState<GroupTask[]>([])
@@ -46,6 +50,7 @@ export function GroupsDashboard() {
   const [isSendingMessage, setIsSendingMessage] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
   const [selectedTask, setSelectedTask] = useState<GroupTask | null>(null)
+  const [taskActionMessage, setTaskActionMessage] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [showCreateGroup, setShowCreateGroup] = useState(false)
@@ -197,6 +202,7 @@ export function GroupsDashboard() {
       ? task.group_task_steps.map((step) => ({ title: step.title, assignedTo: step.assigned_to ?? '' }))
       : [{ title: '', assignedTo: '' }])
     setSelectedTask(null)
+    setTaskActionMessage('')
     setShowCreateTask(true)
   }
 
@@ -228,11 +234,28 @@ export function GroupsDashboard() {
 
   async function handleToggleSelectedTaskStatus() {
     if (!selectedGroup || !selectedTask) return
-    const nextStatus = selectedTask.status === 'Completed' ? 'In Progress' : 'Completed'
-    const response = await updateGroupTaskStatus(selectedTask.id, nextStatus)
-    if (response.error) return setMessage(errorMessage(response.error))
+    const shouldComplete = selectedTask.status !== 'Completed'
+    setTaskActionMessage('')
+    const response = await setGroupTaskCompletion(selectedTask.id, shouldComplete)
+    if (response.error) return setTaskActionMessage(errorMessage(response.error))
+    const nextStatus = response.data?.status ?? (shouldComplete ? 'Completed' : 'In Progress')
     setSelectedTask((current) => current ? { ...current, status: nextStatus } : null)
     await loadTasks(selectedGroup.id)
+    if (!shouldComplete) {
+      setTaskActionMessage('Task returned to in progress. Previously awarded group points remain on member accounts.')
+      return
+    }
+    if (response.data?.awarded_recipient_count) {
+      const recipientCount = response.data.awarded_recipient_count
+      setTaskActionMessage(
+        `Task completed. ${recipientCount} assigned member${recipientCount === 1 ? '' : 's'} each earned ${response.data.points_each} points.`,
+      )
+      await onPointsChanged?.()
+    } else if (response.data?.already_rewarded) {
+      setTaskActionMessage('Task completed. Points for this group task were already awarded.')
+    } else {
+      setTaskActionMessage('Task completed. No members were assigned checklist steps, so no points were awarded.')
+    }
   }
 
   async function handleJoinGroup(event: FormEvent) {
@@ -410,7 +433,7 @@ export function GroupsDashboard() {
         </div>
       </div>
 
-      {selectedTask && selectedGroup ? <GroupTaskDetailsModal task={selectedTask} group={selectedGroup} members={members} currentUserId={currentUserId} onClose={() => setSelectedTask(null)} onEdit={() => openEditTask(selectedTask)} onToggleStep={(stepId, isCompleted) => void handleToggleStep(stepId, isCompleted)} onDelete={handleDeleteSelectedTask} onToggleStatus={() => void handleToggleSelectedTaskStatus()} /> : null}
+      {selectedTask && selectedGroup ? <GroupTaskDetailsModal task={selectedTask} group={selectedGroup} members={members} currentUserId={currentUserId} actionMessage={taskActionMessage} onClose={() => { setSelectedTask(null); setTaskActionMessage('') }} onEdit={() => openEditTask(selectedTask)} onToggleStep={(stepId, isCompleted) => void handleToggleStep(stepId, isCompleted)} onDelete={handleDeleteSelectedTask} onToggleStatus={() => void handleToggleSelectedTaskStatus()} /> : null}
 
       {groupConfirmation && selectedGroup ? (
         <div

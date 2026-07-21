@@ -287,8 +287,23 @@ export async function updateGroupTaskStepCompletion(stepId: string, isCompleted:
   return supabase.from('group_task_steps').update({ is_completed: isCompleted }).eq('id', stepId).select().single()
 }
 
-export async function updateGroupTaskStatus(taskId: string, status: TaskStatus) {
-  return supabase.from('group_tasks').update({ status, updated_at: new Date().toISOString() }).eq('id', taskId).select().single()
+export type GroupTaskCompletionResult = {
+  status: TaskStatus
+  awarded_recipient_count: number
+  points_each: number
+  already_rewarded: boolean
+}
+
+export async function setGroupTaskCompletion(taskId: string, shouldComplete: boolean) {
+  const response = await supabase.rpc('set_group_task_completion', {
+    target_task_id: taskId,
+    should_complete: shouldComplete,
+  })
+
+  return {
+    ...response,
+    data: response.data as GroupTaskCompletionResult | null,
+  }
 }
 
 export async function deleteGroupTask(taskId: string) {

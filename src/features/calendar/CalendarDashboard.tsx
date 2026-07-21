@@ -6,7 +6,7 @@ import {
   getGroups,
   getGroupTasks,
   updateGroupTask,
-  updateGroupTaskStatus,
+  setGroupTaskCompletion,
   updateGroupTaskStepCompletion,
   type Group,
   type GroupMember,
@@ -23,6 +23,7 @@ type CalendarDashboardProps = {
   tasksError: string
   onRefreshTasks: () => void
   onOpenTask: (task: Task) => void
+  onPointsChanged?: () => Promise<void> | void
 }
 
 type CalendarGroupTask = {
@@ -66,6 +67,7 @@ export function CalendarDashboard({
   tasksError,
   onRefreshTasks,
   onOpenTask,
+  onPointsChanged,
 }: CalendarDashboardProps) {
   const today = useMemo(() => new Date(), [])
   const [visibleMonth, setVisibleMonth] = useState(() => monthStart(today))
@@ -76,6 +78,7 @@ export function CalendarDashboard({
   const [groupTasksError, setGroupTasksError] = useState('')
   const [currentUserId, setCurrentUserId] = useState('')
   const [selectedGroupTask, setSelectedGroupTask] = useState<CalendarGroupTask | null>(null)
+  const [groupTaskActionMessage, setGroupTaskActionMessage] = useState('')
   const [editingGroupTask, setEditingGroupTask] = useState<CalendarGroupTask | null>(null)
   const [taskTitle, setTaskTitle] = useState('')
   const [taskDescription, setTaskDescription] = useState('')
@@ -202,7 +205,10 @@ export function CalendarDashboard({
   function openCalendarItem(item: CalendarItem) {
     setIsDayModalOpen(false)
     if (item.kind === 'personal') onOpenTask(item.task)
-    else setSelectedGroupTask(item)
+    else {
+      setGroupTaskActionMessage('')
+      setSelectedGroupTask(item)
+    }
   }
 
   async function refreshCalendar() {
@@ -281,14 +287,14 @@ export function CalendarDashboard({
 
   async function handleToggleGroupTaskStatus() {
     if (!selectedGroupTask) return
-    const nextStatus: GroupTask['status'] = selectedGroupTask.task.status === 'Completed'
-      ? 'In Progress'
-      : 'Completed'
-    const response = await updateGroupTaskStatus(selectedGroupTask.task.id, nextStatus)
+    const shouldComplete = selectedGroupTask.task.status !== 'Completed'
+    setGroupTaskActionMessage('')
+    const response = await setGroupTaskCompletion(selectedGroupTask.task.id, shouldComplete)
     if (response.error) {
-      setGroupTasksError(errorMessage(response.error))
+      setGroupTaskActionMessage(errorMessage(response.error))
       return
     }
+    const nextStatus: GroupTask['status'] = response.data?.status ?? (shouldComplete ? 'Completed' : 'In Progress')
     const updateItem = (item: CalendarGroupTask) => ({
       ...item,
       task: { ...item.task, status: nextStatus },
@@ -297,6 +303,21 @@ export function CalendarDashboard({
       item.task.id === selectedGroupTask.task.id ? updateItem(item) : item,
     ))
     setSelectedGroupTask((current) => current ? updateItem(current) : null)
+    if (!shouldComplete) {
+      setGroupTaskActionMessage('Task returned to in progress. Previously awarded group points remain on member accounts.')
+      return
+    }
+    if (response.data?.awarded_recipient_count) {
+      const recipientCount = response.data.awarded_recipient_count
+      setGroupTaskActionMessage(
+        `Task completed. ${recipientCount} assigned member${recipientCount === 1 ? '' : 's'} each earned ${response.data.points_each} points.`,
+      )
+      await onPointsChanged?.()
+    } else if (response.data?.already_rewarded) {
+      setGroupTaskActionMessage('Task completed. Points for this group task were already awarded.')
+    } else {
+      setGroupTaskActionMessage('Task completed. No members were assigned checklist steps, so no points were awarded.')
+    }
   }
 
   return (
@@ -453,7 +474,8 @@ export function CalendarDashboard({
           group={selectedGroupTask.group}
           members={selectedGroupTask.members}
           currentUserId={currentUserId}
-          onClose={() => setSelectedGroupTask(null)}
+          actionMessage={groupTaskActionMessage}
+          onClose={() => { setSelectedGroupTask(null); setGroupTaskActionMessage('') }}
           onEdit={() => openEditGroupTask(selectedGroupTask)}
           onToggleStep={(stepId, isCompleted) => void handleToggleGroupStep(stepId, isCompleted)}
           onDelete={handleDeleteGroupTask}

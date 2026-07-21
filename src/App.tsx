@@ -184,6 +184,13 @@ function App() {
     setIsChangelogOpen(false)
   }
 
+  async function refreshCurrentProfile() {
+    if (!user) return
+    const { data, error } = await ensureProfile(user)
+    if (error) setProfileError(error.message)
+    else if (data) setProfile(data)
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -1141,7 +1148,7 @@ function App() {
             </section>
           </div>
           ) : activeDashboard === 'groups' ? (
-            <GroupsDashboard />
+            <GroupsDashboard onPointsChanged={refreshCurrentProfile} />
           ) : activeDashboard === 'calendar' ? (
             <CalendarDashboard
               tasks={tasks}
@@ -1149,6 +1156,7 @@ function App() {
               tasksError={tasksError}
               onRefreshTasks={refreshTasks}
               onOpenTask={openTask}
+              onPointsChanged={refreshCurrentProfile}
             />
           ) : activeDashboard === 'notes' ? (
             <NotesDashboard />
