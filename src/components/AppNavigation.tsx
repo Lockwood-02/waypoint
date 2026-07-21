@@ -11,6 +11,7 @@ const dashboardLinks: { id: ActiveDashboard; label: string }[] = [
   { id: 'notes', label: 'Notes' },
   { id: 'tasks', label: 'Tasks' },
   { id: 'groups', label: 'Groups' },
+  { id: 'calendar', label: 'Calendar' },
   { id: 'weekly-report', label: 'Reports' },
   { id: 'stats', label: 'Stats' },
 ]
