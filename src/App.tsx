@@ -28,6 +28,7 @@ import { WeeklyReportDashboard } from './features/reports/WeeklyReportDashboard'
 import { StatsDashboard } from './features/stats/StatsDashboard'
 import { NotesDashboard } from './features/notes/NotesDashboard'
 import { GroupsDashboard } from './features/groups/GroupsDashboard'
+import { CalendarDashboard } from './features/calendar/CalendarDashboard'
 import { supabase } from './lib/supabaseClient'
 import { AppNavigation } from './components/AppNavigation'
 import { SettingsModal } from './components/SettingsModal'
@@ -1139,6 +1140,14 @@ function App() {
           </div>
           ) : activeDashboard === 'groups' ? (
             <GroupsDashboard />
+          ) : activeDashboard === 'calendar' ? (
+            <CalendarDashboard
+              tasks={tasks}
+              isLoadingTasks={isLoadingTasks}
+              tasksError={tasksError}
+              onRefreshTasks={refreshTasks}
+              onOpenTask={openTask}
+            />
           ) : activeDashboard === 'notes' ? (
             <NotesDashboard />
           ) : activeDashboard === 'weekly-report' ? (
