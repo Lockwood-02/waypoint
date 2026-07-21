@@ -11,6 +11,7 @@ import {
   type Note,
   type NoteFolder,
 } from './noteService'
+import { NoteMarkdown } from './NoteMarkdown'
 
 type NoteForm = { title: string; content: string; folderId: string | null }
 
@@ -44,6 +45,7 @@ export function NotesDashboard() {
   const [editingNote, setEditingNote] = useState<Note | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [noteEditorView, setNoteEditorView] = useState<'write' | 'preview'>('write')
   const [deletingNoteId, setDeletingNoteId] = useState('')
   const [isFolderFormOpen, setIsFolderFormOpen] = useState(false)
   const [editingFolder, setEditingFolder] = useState<NoteFolder | null>(null)
@@ -152,6 +154,7 @@ export function NotesDashboard() {
     setForm({ ...emptyForm, folderId: activeFolderId || null })
     setError('')
     setNotice('')
+    setNoteEditorView('write')
     setIsFormOpen(true)
   }
 
@@ -168,6 +171,7 @@ export function NotesDashboard() {
     setNotice('')
     setDeletingNoteId('')
     setSelectedNote(null)
+    setNoteEditorView('write')
     setIsFormOpen(true)
   }
 
@@ -512,9 +516,7 @@ export function NotesDashboard() {
                 </button>
               </div>
             </div>
-            <p className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-200">
-              {selectedNote.content || 'No note text yet.'}
-            </p>
+            <NoteMarkdown content={selectedNote.content} className="mt-6" />
           </section>
         </div>
       ) : null}
@@ -553,15 +555,50 @@ export function NotesDashboard() {
                   {folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
                 </select>
               </label>
-              <label className="block text-sm font-semibold text-slate-200">
-                Note text
-                <textarea
-                  value={form.content}
-                  onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
-                  className="mt-2 min-h-80 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 font-mono text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
-                  placeholder="Write your notes here..."
-                />
-              </label>
+              <div>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <label htmlFor="note-content" className="block text-sm font-semibold text-slate-200">
+                      Note text
+                    </label>
+                    <p className="mt-1 text-xs text-slate-400">Markdown formatting is supported.</p>
+                  </div>
+                  <div className="flex rounded-md border border-white/10 bg-slate-900 p-1">
+                    <button
+                      type="button"
+                      onClick={() => setNoteEditorView('write')}
+                      className={`rounded px-3 py-1.5 text-xs font-semibold transition ${noteEditorView === 'write' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:text-white'}`}
+                    >
+                      Write
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNoteEditorView('preview')}
+                      className={`rounded px-3 py-1.5 text-xs font-semibold transition ${noteEditorView === 'preview' ? 'bg-cyan-300 text-slate-950' : 'text-slate-300 hover:text-white'}`}
+                    >
+                      Preview
+                    </button>
+                  </div>
+                </div>
+                {noteEditorView === 'write' ? (
+                  <>
+                    <p className="mt-3 rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-xs leading-5 text-slate-400">
+                      Try <code className="text-cyan-200"># Heading</code>, <code className="text-cyan-200">**bold**</code>, <code className="text-cyan-200">*italic*</code>, <code className="text-cyan-200">- list</code>, or <code className="text-cyan-200">[link](https://example.com)</code>.
+                    </p>
+                    <textarea
+                      id="note-content"
+                      value={form.content}
+                      onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
+                      className="mt-2 min-h-80 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 font-mono text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
+                      placeholder="# My notes&#10;&#10;Write your notes using Markdown..."
+                    />
+                  </>
+                ) : (
+                  <div className="mt-3 min-h-80 rounded-md border border-white/10 bg-slate-900 p-4">
+                    <NoteMarkdown content={form.content} />
+                  </div>
+                )}
+              </div>
               {error ? <p className="rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">{error}</p> : null}
               <div className="flex flex-wrap justify-between gap-3">
                 <div>
