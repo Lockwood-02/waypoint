@@ -40,6 +40,7 @@ export function NotesDashboard() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [form, setForm] = useState<NoteForm>(emptyForm)
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const [editingNote, setEditingNote] = useState<Note | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -155,17 +156,25 @@ export function NotesDashboard() {
   }
 
   function openNote(note: Note) {
+    setSelectedNote(note)
+    setError('')
+    setNotice('')
+  }
+
+  function openEditNote(note: Note) {
     setEditingNote(note)
     setForm({ title: note.title, content: note.content, folderId: note.folder_id })
     setError('')
     setNotice('')
     setDeletingNoteId('')
+    setSelectedNote(null)
     setIsFormOpen(true)
   }
 
   function closeForm() {
     if (isSaving) return
     setIsFormOpen(false)
+    setSelectedNote(null)
     setEditingNote(null)
     setForm(emptyForm)
     setDeletingNoteId('')
@@ -197,6 +206,7 @@ export function NotesDashboard() {
     setNotice(editingNote ? 'Note updated.' : 'Note created.')
     setIsSaving(false)
     setIsFormOpen(false)
+    setSelectedNote(null)
     setEditingNote(null)
     setForm(emptyForm)
     setDeletingNoteId('')
@@ -217,6 +227,7 @@ export function NotesDashboard() {
     setNotice('Note deleted.')
     setIsSaving(false)
     setIsFormOpen(false)
+    setSelectedNote(null)
     setEditingNote(null)
     setForm(emptyForm)
     setDeletingNoteId('')
@@ -465,6 +476,48 @@ export function NotesDashboard() {
           </div>
         </section>
       </section>
+
+      {selectedNote ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="note-view-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSelectedNote(null)
+          }}
+        >
+          <section className="max-h-full w-full max-w-3xl overflow-y-auto rounded-lg border border-white/10 bg-slate-950 p-6 shadow-2xl shadow-cyan-950/60">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300">Note</p>
+                <h2 id="note-view-title" className="mt-2 break-words text-2xl font-bold">
+                  {selectedNote.title}
+                </h2>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={() => openEditNote(selectedNote)}
+                  className="rounded-md bg-cyan-300 px-3 py-2 text-sm font-bold text-slate-950 transition hover:bg-cyan-200"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedNote(null)}
+                  className="rounded-md border border-white/15 px-3 py-2 text-sm font-semibold transition hover:border-cyan-300 hover:text-cyan-200"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <p className="mt-6 whitespace-pre-wrap break-words text-sm leading-7 text-slate-200">
+              {selectedNote.content || 'No note text yet.'}
+            </p>
+          </section>
+        </div>
+      ) : null}
 
       {isFormOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-8" role="dialog" aria-modal="true" aria-labelledby="note-modal-title" onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm() }}>
