@@ -21,6 +21,16 @@ export type CompletedProgressionPath = {
   completed_at: string
 }
 
+export type ProfileShowcaseBadge = {
+  user_id: string
+  path_id: ProgressionPathId
+  badge_id: string
+  position: number
+  selected_at: string
+}
+
+export type ShowcaseBadgeSelection = Pick<ProfileShowcaseBadge, 'path_id' | 'badge_id'>
+
 export async function getProfileProgression(userId: string) {
   const response = await supabase
     .from('profile_progressions')
@@ -52,6 +62,22 @@ export async function switchProgressionPath(pathId: ProgressionPathId) {
     requested_path_id: pathId,
   })
   return { ...response, data: response.data as ProfileProgression | null }
+}
+
+export async function getProfileShowcaseBadges(userId: string) {
+  const response = await supabase
+    .from('profile_showcase_badges')
+    .select('*')
+    .eq('user_id', userId)
+    .order('position', { ascending: true })
+  return { ...response, data: response.data as ProfileShowcaseBadge[] | null }
+}
+
+export async function saveProfileShowcaseBadges(badges: ShowcaseBadgeSelection[]) {
+  const response = await supabase.rpc('set_profile_showcase_badges', {
+    requested_badges: badges,
+  })
+  return { ...response, data: response.data as ProfileShowcaseBadge[] | null }
 }
 
 export async function purchaseXpBundle(bundleId: XpBundle['id']) {

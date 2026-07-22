@@ -21,7 +21,7 @@ export const initialTaskFormState: TaskFormState = {
 
 // Increment the tenths place for major releases and the hundredths/thousandths
 // places for smaller feature or patch releases.
-export const appVersion = 'v0.9.2'
+export const appVersion = 'v0.9.3'
 export const changelogVersion = 'v0.9'
 
 export const colorwayOptions: ColorwayOption[] = [

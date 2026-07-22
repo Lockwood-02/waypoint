@@ -39,11 +39,15 @@ import {
   equipProgressionTitle,
   getCompletedProgressionPaths,
   getProfileProgression,
+  getProfileShowcaseBadges,
   purchaseXpBundle,
+  saveProfileShowcaseBadges,
   chooseProgressionPath,
   switchProgressionPath,
   type CompletedProgressionPath,
   type ProfileProgression,
+  type ProfileShowcaseBadge,
+  type ShowcaseBadgeSelection,
 } from './features/progression/progressionService'
 import {
   getProgressionPath,
@@ -87,6 +91,7 @@ function App() {
   const [ownedShopItemIds, setOwnedShopItemIds] = useState<string[]>([])
   const [progression, setProgression] = useState<ProfileProgression | null>(null)
   const [completedProgressionPaths, setCompletedProgressionPaths] = useState<CompletedProgressionPath[]>([])
+  const [showcaseBadges, setShowcaseBadges] = useState<ProfileShowcaseBadge[]>([])
   const [isLoadingProgression, setIsLoadingProgression] = useState(false)
   const [isProgressionOpen, setIsProgressionOpen] = useState(false)
   const [isUpdatingProgression, setIsUpdatingProgression] = useState(false)
@@ -120,6 +125,7 @@ function App() {
     setOwnedShopItemIds([])
     setProgression(null)
     setCompletedProgressionPaths([])
+    setShowcaseBadges([])
     setIsLoadingProgression(false)
     setIsProgressionOpen(false)
     setIsUpdatingProgression(false)
@@ -248,14 +254,16 @@ function App() {
     async function loadProgression() {
       if (!user) return
       setIsLoadingProgression(true)
-      const [progressionResponse, completedResponse] = await Promise.all([
+      const [progressionResponse, completedResponse, showcaseResponse] = await Promise.all([
         getProfileProgression(user.id),
         getCompletedProgressionPaths(user.id),
+        getProfileShowcaseBadges(user.id),
       ])
       if (!isMounted) return
       setProgression(progressionResponse.data)
       setCompletedProgressionPaths(completedResponse.data ?? [])
-      const error = progressionResponse.error ?? completedResponse.error
+      setShowcaseBadges(showcaseResponse.data ?? [])
+      const error = progressionResponse.error ?? completedResponse.error ?? showcaseResponse.error
       if (error) setProgressionActionMessage(error.message)
       setIsLoadingProgression(false)
     }
@@ -635,6 +643,8 @@ function App() {
       setProgression(data)
       const completedResponse = await getCompletedProgressionPaths(user.id)
       if (!completedResponse.error) setCompletedProgressionPaths(completedResponse.data ?? [])
+      const showcaseResponse = await getProfileShowcaseBadges(user.id)
+      if (!showcaseResponse.error) setShowcaseBadges(showcaseResponse.data ?? [])
       setProgressionActionMessage(
         preserved
           ? `${previousPath?.name ?? 'Your completed path'} was preserved. Your new path is active.`
@@ -642,6 +652,21 @@ function App() {
       )
     }
     setIsUpdatingProgression(false)
+  }
+
+  async function handleSaveShowcaseBadges(badges: ShowcaseBadgeSelection[]) {
+    setIsUpdatingProgression(true)
+    setProfileActionMessage('')
+    const { data, error } = await saveProfileShowcaseBadges(badges)
+    if (error) {
+      setProfileActionMessage(error.message)
+      setIsUpdatingProgression(false)
+      return false
+    }
+    setShowcaseBadges(data ?? [])
+    setProfileActionMessage('Badge showcase updated.')
+    setIsUpdatingProgression(false)
+    return true
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -1188,8 +1213,10 @@ function App() {
               avatarFrameClass={avatarFrameClass}
               progression={progression}
               completedPaths={completedProgressionPaths}
+              showcaseBadges={showcaseBadges}
               isLoadingProgression={isLoadingProgression}
               isUpdatingProfile={isUpdatingProfile}
+              isUpdatingShowcase={isUpdatingProgression}
               openTaskCount={tasks.filter((task) => task.status !== 'Completed').length}
               completedTaskCount={tasks.filter((task) => task.status === 'Completed').length}
               onAvatarUpload={handleAvatarUpload}
@@ -1205,6 +1232,7 @@ function App() {
                 setProfileActionMessage('')
                 setIsSettingsOpen(true)
               }}
+              onSaveShowcaseBadges={handleSaveShowcaseBadges}
             />
           ) : (
             <StatsDashboard
@@ -1255,7 +1283,7 @@ function App() {
                 <article className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-4">
                   <h3 className="font-bold text-cyan-100">A dedicated Profile dashboard</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    View your avatar, equipped title, points, task history, badges, completed paths, and active progression from one place.
+                    View your avatar, equipped title, points, task history, completed paths, active progression, and showcase up to three earned badges.
                   </p>
                 </article>
                 <article className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
