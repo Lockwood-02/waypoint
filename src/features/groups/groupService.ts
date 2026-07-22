@@ -1,4 +1,5 @@
 import { clampTaskPoints } from '../../lib/pointEconomy'
+import { INPUT_LIMITS } from '../../lib/inputLimits'
 import { supabase } from '../../lib/supabaseClient'
 import type { TaskStatus } from '../tasks/taskService'
 
@@ -68,6 +69,22 @@ export type GroupMessage = {
   updated_at: string
 }
 
+function validateGroupDetails(name: string, description: string) {
+  if (!name.trim()) return new Error('Group name is required.')
+  if (name.trim().length > INPUT_LIMITS.groupName) return new Error(`Group names are limited to ${INPUT_LIMITS.groupName} characters.`)
+  if (description.length > INPUT_LIMITS.groupDescription) return new Error(`Group descriptions are limited to ${INPUT_LIMITS.groupDescription} characters.`)
+  return null
+}
+
+function validateGroupTaskInput(title: string, description: string, steps: CreateGroupTaskStepInput[]) {
+  if (!title.trim()) return new Error('Group task title is required.')
+  if (title.trim().length > INPUT_LIMITS.groupTaskTitle) return new Error(`Group task titles are limited to ${INPUT_LIMITS.groupTaskTitle} characters.`)
+  if (description.length > INPUT_LIMITS.groupTaskDescription) return new Error(`Group task descriptions are limited to ${INPUT_LIMITS.groupTaskDescription} characters.`)
+  if (steps.length > INPUT_LIMITS.groupTaskStepCount) return new Error(`Group tasks are limited to ${INPUT_LIMITS.groupTaskStepCount} checklist steps.`)
+  if (steps.some((step) => step.title.trim().length > INPUT_LIMITS.groupTaskStepText)) return new Error(`Group task steps are limited to ${INPUT_LIMITS.groupTaskStepText} characters.`)
+  return null
+}
+
 export async function getGroups() {
   const {
     data: { user },
@@ -104,6 +121,8 @@ export async function getGroups() {
 }
 
 export async function createGroup(name: string, description: string, groupType: GroupType) {
+  const validationError = validateGroupDetails(name, description)
+  if (validationError) return { data: null, error: validationError }
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { data: null, error: userError ?? new Error('Not logged in') }
 
@@ -127,6 +146,8 @@ export async function updateGroupDetails(
   name: string,
   description: string,
 ) {
+  const validationError = validateGroupDetails(name, description)
+  if (validationError) return { data: null, error: validationError }
   return supabase
     .from('groups')
     .update({
@@ -177,6 +198,8 @@ export async function getGroupMessages(groupId: string) {
 }
 
 export async function createGroupMessage(groupId: string, body: string) {
+  if (!body.trim()) return { data: null, error: new Error('Message cannot be empty.') }
+  if (body.length > INPUT_LIMITS.groupChatMessage) return { data: null, error: new Error(`Group messages are limited to ${INPUT_LIMITS.groupChatMessage} characters.`) }
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { data: null, error: userError ?? new Error('Not logged in') }
   return supabase.from('group_messages').insert({
@@ -187,6 +210,8 @@ export async function createGroupMessage(groupId: string, body: string) {
 }
 
 export async function updateGroupMessage(messageId: string, body: string) {
+  if (!body.trim()) return { data: null, error: new Error('Message cannot be empty.') }
+  if (body.length > INPUT_LIMITS.groupChatMessage) return { data: null, error: new Error(`Group messages are limited to ${INPUT_LIMITS.groupChatMessage} characters.`) }
   return supabase.from('group_messages').update({
     body: body.trim(),
     updated_at: new Date().toISOString(),
@@ -207,6 +232,8 @@ export async function deleteGroup(groupId: string) {
 }
 
 export async function createGroupTask(groupId: string, title: string, description: string, points: number, isUrgent: boolean, dueDate: string, steps: CreateGroupTaskStepInput[]) {
+  const validationError = validateGroupTaskInput(title, description, steps)
+  if (validationError) return { data: null, error: validationError }
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return { data: null, error: userError ?? new Error('Not logged in') }
   const taskResponse = await supabase.from('group_tasks').insert({
@@ -243,6 +270,8 @@ export async function createGroupTask(groupId: string, title: string, descriptio
 }
 
 export async function updateGroupTask(task: GroupTask, title: string, description: string, points: number, isUrgent: boolean, dueDate: string, steps: CreateGroupTaskStepInput[]) {
+  const validationError = validateGroupTaskInput(title, description, steps)
+  if (validationError) return { data: null, error: validationError }
   const taskResponse = await supabase.from('group_tasks').update({
     title: title.trim(),
     description: description.trim(),

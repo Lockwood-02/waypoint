@@ -1,0 +1,18 @@
+export const INPUT_LIMITS = {
+  username: 25,
+  taskTitle: 50,
+  taskDescription: 750,
+  taskStepText: 150,
+  taskStepCount: 25,
+  taskTagName: 20,
+  noteTitle: 100,
+  noteContent: 50000,
+  noteFolderName: 50,
+  groupName: 50,
+  groupDescription: 250,
+  groupTaskTitle: 50,
+  groupTaskDescription: 750,
+  groupTaskStepText: 150,
+  groupTaskStepCount: 25,
+  groupChatMessage: 1000,
+} as const

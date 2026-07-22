@@ -1,4 +1,5 @@
 import { clampTaskPoints } from '../../lib/pointEconomy'
+import { INPUT_LIMITS } from '../../lib/inputLimits'
 import { supabase } from '../../lib/supabaseClient'
 
 export type TaskStatus =
@@ -62,6 +63,16 @@ export type CreateTaskInput = {
 }
 
 export type UpdateTaskInput = CreateTaskInput
+
+function validateTaskInput(input: CreateTaskInput) {
+  if (!input.title.trim()) return new Error('Task title is required.')
+  if (input.title.trim().length > INPUT_LIMITS.taskTitle) return new Error(`Task titles are limited to ${INPUT_LIMITS.taskTitle} characters.`)
+  if ((input.description ?? '').length > INPUT_LIMITS.taskDescription) return new Error(`Task descriptions are limited to ${INPUT_LIMITS.taskDescription} characters.`)
+  if (input.steps.length > INPUT_LIMITS.taskStepCount) return new Error(`Tasks are limited to ${INPUT_LIMITS.taskStepCount} checklist steps.`)
+  if (input.steps.some((step) => step.trim().length > INPUT_LIMITS.taskStepText)) return new Error(`Checklist steps are limited to ${INPUT_LIMITS.taskStepText} characters.`)
+  if ((input.newTagName?.trim().length ?? 0) > INPUT_LIMITS.taskTagName) return new Error(`Task tags are limited to ${INPUT_LIMITS.taskTagName} characters.`)
+  return null
+}
 
 export async function getTasks() {
   const response = await supabase
@@ -197,6 +208,8 @@ async function replaceTaskTag(taskId: string, tagId: string | null) {
 }
 
 export async function createTask(input: CreateTaskInput) {
+  const validationError = validateTaskInput(input)
+  if (validationError) return { data: null, error: validationError }
   const {
     data: { user },
     error: userError,
@@ -289,6 +302,8 @@ export async function getTask(taskId: string) {
 }
 
 export async function updateTask(taskId: string, input: UpdateTaskInput) {
+  const validationError = validateTaskInput(input)
+  if (validationError) return { data: null, error: validationError }
   const updatedAt = new Date().toISOString()
   const existingStepsResponse = await supabase
     .from('task_steps')

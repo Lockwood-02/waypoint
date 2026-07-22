@@ -12,6 +12,7 @@ import {
   type NoteFolder,
 } from './noteService'
 import { NoteMarkdown } from './NoteMarkdown'
+import { INPUT_LIMITS } from '../../lib/inputLimits'
 
 type NoteForm = { title: string; content: string; folderId: string | null }
 
@@ -537,7 +538,7 @@ export function NotesDashboard() {
                 Title
                 <input
                   required
-                  maxLength={200}
+                  maxLength={INPUT_LIMITS.noteTitle}
                   value={form.title}
                   onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
                   className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
@@ -587,6 +588,7 @@ export function NotesDashboard() {
                     </p>
                     <textarea
                       id="note-content"
+                      maxLength={INPUT_LIMITS.noteContent}
                       value={form.content}
                       onChange={(event) => setForm((current) => ({ ...current, content: event.target.value }))}
                       className="mt-2 min-h-80 w-full resize-y rounded-md border border-white/10 bg-slate-900 px-3 py-3 font-mono text-sm leading-6 text-white outline-none placeholder:text-slate-500 focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
@@ -632,7 +634,7 @@ export function NotesDashboard() {
               <input
                 required
                 autoFocus
-                maxLength={80}
+                maxLength={INPUT_LIMITS.noteFolderName}
                 value={folderName}
                 onChange={(event) => setFolderName(event.target.value)}
                 placeholder="Work"

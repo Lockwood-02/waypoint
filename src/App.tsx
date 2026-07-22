@@ -57,6 +57,7 @@ import {
 } from './features/progression/progressionConfig'
 import { TaskDueIndicator } from './components/TaskDueIndicator'
 import { clampTaskPoints, MAX_TASK_POINTS, MIN_TASK_POINTS } from './lib/pointEconomy'
+import { INPUT_LIMITS } from './lib/inputLimits'
 import { appVersion, changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
 import type { ActiveDashboard, AuthMode, AuthState, Colorway, ShopItem, TaskCompletionFilter, TaskFormState } from './types/app'
 
@@ -799,7 +800,9 @@ function App() {
   function addStepDraft() {
     setTaskForm((current) => ({
       ...current,
-      steps: [...current.steps, ''],
+      steps: current.steps.length >= INPUT_LIMITS.taskStepCount
+        ? current.steps
+        : [...current.steps, ''],
     }))
   }
 
@@ -1368,6 +1371,7 @@ function App() {
                   </span>
                   <input
                     required
+                    maxLength={INPUT_LIMITS.taskTitle}
                     value={taskForm.title}
                     onChange={(event) =>
                       setTaskForm((current) => ({
@@ -1385,6 +1389,7 @@ function App() {
                     Description
                   </span>
                   <textarea
+                    maxLength={INPUT_LIMITS.taskDescription}
                     value={taskForm.description}
                     onChange={(event) =>
                       setTaskForm((current) => ({
@@ -1468,6 +1473,7 @@ function App() {
                       Create new tag
                     </span>
                     <input
+                      maxLength={INPUT_LIMITS.taskTagName}
                       value={taskForm.newTagName}
                       onChange={(event) =>
                         setTaskForm((current) => ({
@@ -1489,8 +1495,9 @@ function App() {
                     </p>
                     <button
                       type="button"
+                      disabled={taskForm.steps.length >= INPUT_LIMITS.taskStepCount}
                       onClick={addStepDraft}
-                      className="rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300"
+                      className="rounded-md border border-white/15 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Add step
                     </button>
@@ -1499,6 +1506,7 @@ function App() {
                     {taskForm.steps.map((step, index) => (
                       <div key={index} className="flex gap-2">
                         <input
+                          maxLength={INPUT_LIMITS.taskStepText}
                           value={step}
                           onChange={(event) =>
                             updateStepDraft(index, event.target.value)
@@ -1968,6 +1976,7 @@ function App() {
               </span>
               <input
                 type="text"
+                maxLength={INPUT_LIMITS.username}
                 value={formState.displayName}
                 onChange={(event) =>
                   setFormState((current) => ({
