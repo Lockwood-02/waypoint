@@ -33,7 +33,8 @@ import { supabase } from './lib/supabaseClient'
 import { AppNavigation } from './components/AppNavigation'
 import { SettingsModal } from './components/SettingsModal'
 import { PointShopModal } from './components/PointShopModal'
-import { ProgressionModal, ProgressionSummary } from './features/progression/ProgressionPanel'
+import { ProgressionModal } from './features/progression/ProgressionPanel'
+import { ProfileDashboard } from './features/profiles/ProfileDashboard'
 import {
   equipProgressionTitle,
   getCompletedProgressionPaths,
@@ -46,7 +47,7 @@ import {
 } from './features/progression/progressionService'
 import {
   getProgressionPath,
-  getProgressionTitle,
+  maximumProgressionXp,
   type ProgressionPathId,
   type XpBundle,
 } from './features/progression/progressionConfig'
@@ -338,18 +339,6 @@ function App() {
     }
   }, [user])
 
-  const userRows = useMemo(
-    () =>
-      user
-        ? [
-            ['Total points', String(profile?.total_points ?? 0)],
-            ['Open tasks', String(tasks.filter((task) => task.status !== 'Completed').length)],
-            ['Completed tasks', String(tasks.filter((task) => task.status === 'Completed').length)],
-          ]
-        : [],
-    [profile, tasks, user],
-  )
-
   const visibleTasks = useMemo(() => {
     const normalizedSearch = taskSearch.trim().toLowerCase()
 
@@ -437,11 +426,6 @@ function App() {
     () => getProgressionPath(progression?.path_id),
     [progression?.path_id],
   )
-  const equippedProgressionTitle = useMemo(
-    () => getProgressionTitle(progression?.equipped_title_id),
-    [progression?.equipped_title_id],
-  )
-
   async function refreshTasks() {
     const { data, error } = await getTasks()
     setTasks(data ?? [])
@@ -642,7 +626,7 @@ function App() {
   async function handleSwitchProgressionPath(pathId: ProgressionPathId) {
     if (!user || !progression) return
     const previousPath = getProgressionPath(progression.path_id)
-    const preserved = progression.xp >= 1000
+    const preserved = progression.xp >= maximumProgressionXp
     setIsUpdatingProgression(true)
     setProgressionActionMessage('')
     const { data, error } = await switchProgressionPath(pathId)
@@ -994,6 +978,9 @@ function App() {
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-8">
           <AppNavigation
             activeDashboard={activeDashboard}
+            avatarUrl={profile?.avatar_url ?? null}
+            avatarFrameClass={avatarFrameClass}
+            displayName={profile?.display_name ?? 'Player'}
             onDashboardChange={setActiveDashboard}
             onOpenChangelog={() => setIsChangelogOpen(true)}
             onOpenSettings={() => {
@@ -1004,118 +991,7 @@ function App() {
           />
 
           {activeDashboard === 'tasks' ? (
-          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-            <aside className="space-y-6">
-              <section className="rounded-lg border border-white/10 bg-white/[0.06] p-6 shadow-2xl shadow-cyan-950/40">
-                <div className="flex flex-wrap items-center gap-4">
-                  <label
-                    className={`group relative flex h-20 w-20 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 bg-slate-900 text-2xl font-bold shadow-lg transition focus-within:ring-2 focus-within:ring-cyan-300 focus-within:ring-offset-2 focus-within:ring-offset-slate-950 ${avatarFrameClass}`}
-                  >
-                    {profile?.avatar_url ? (
-                      <img
-                        src={profile.avatar_url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-cyan-100">
-                        {(profile?.display_name ?? 'Player')
-                          .charAt(0)
-                          .toUpperCase()}
-                      </span>
-                    )}
-                    <span className="absolute inset-0 flex items-center justify-center bg-slate-950/70 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
-                      Upload
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={isUpdatingProfile}
-                      onChange={handleAvatarUpload}
-                      className="sr-only"
-                    />
-                  </label>
-                  <div>
-                    <p className="text-sm font-medium text-cyan-200">
-                      Welcome back
-                    </p>
-                    <h2
-                      className={`mt-2 break-words text-2xl font-bold ${profileNameClass}`}
-                    >
-                      {profile?.display_name ?? 'Player'}
-                    </h2>
-                    {equippedProgressionTitle ? (
-                      <p className={`mt-1 text-sm font-semibold ${equippedProgressionTitle.path.accentClass}`}>
-                        {equippedProgressionTitle.level.title}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-                {profileError ? (
-                  <p className="mt-4 rounded-md border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-sm text-amber-100">
-                    Profile could not be loaded: {profileError}
-                  </p>
-                ) : null}
-                <div className="mt-5">
-                  <ProgressionSummary
-                    progression={progression}
-                    isLoading={isLoadingProgression}
-                    onOpen={() => {
-                      setProgressionActionMessage('')
-                      setIsProgressionOpen(true)
-                    }}
-                  />
-                </div>
-                <dl className="mt-5 grid grid-cols-3 gap-3">
-                  {userRows.map(([label, value]) => (
-                    <div key={label}>
-                      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        {label}
-                      </dt>
-                      <dd className="mt-1 break-words text-sm text-slate-100">
-                        {value}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-                {profileActionMessage ? (
-                  <p className="mt-4 rounded-md border border-cyan-300/30 bg-cyan-300/10 px-3 py-2 text-sm text-cyan-100">
-                    {profileActionMessage}
-                  </p>
-                ) : null}
-              </section>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setProfileActionMessage('')
-                    setIsPointShopOpen(true)
-                  }}
-                  className="rounded-lg border border-white/10 bg-white/[0.06] p-5 text-center shadow-xl shadow-cyan-950/20 transition hover:border-cyan-300/70 hover:bg-white/[0.09] focus:outline-none focus:ring-2 focus:ring-cyan-300"
-                >
-                  <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-300 text-2xl font-bold text-slate-950">
-                    $
-                  </span>
-                  <span className="mt-3 block text-sm font-bold text-white">
-                    Point Shop
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="rounded-lg border border-white/10 bg-white/[0.04] p-5 text-center opacity-75"
-                >
-                  <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-amber-300/50 bg-amber-300/10 text-2xl font-bold text-amber-100">
-                    !
-                  </span>
-                  <span className="mt-3 block text-sm font-bold text-slate-200">
-                    Coming Soon
-                  </span>
-                </button>
-              </div>
-            </aside>
-
-            <section className="flex max-h-[36rem] min-h-0 flex-col rounded-lg border border-white/10 bg-white/[0.06] p-6 lg:max-h-[calc(100vh-12rem)]">
+            <section className="flex max-h-[calc(100vh-12rem)] min-h-[32rem] flex-col rounded-lg border border-white/10 bg-white/[0.06] p-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold">Tasks</h2>
@@ -1283,7 +1159,6 @@ function App() {
                 })}
               </div>
             </section>
-          </div>
           ) : activeDashboard === 'groups' ? (
             <GroupsDashboard onPointsChanged={refreshCurrentProfile} />
           ) : activeDashboard === 'calendar' ? (
@@ -1303,6 +1178,33 @@ function App() {
               isLoadingTasks={isLoadingTasks}
               tasksError={tasksError}
               onRefreshTasks={refreshTasks}
+            />
+          ) : activeDashboard === 'profile' ? (
+            <ProfileDashboard
+              profile={profile}
+              profileError={profileError}
+              profileMessage={profileActionMessage}
+              nameClass={profileNameClass}
+              avatarFrameClass={avatarFrameClass}
+              progression={progression}
+              completedPaths={completedProgressionPaths}
+              isLoadingProgression={isLoadingProgression}
+              isUpdatingProfile={isUpdatingProfile}
+              openTaskCount={tasks.filter((task) => task.status !== 'Completed').length}
+              completedTaskCount={tasks.filter((task) => task.status === 'Completed').length}
+              onAvatarUpload={handleAvatarUpload}
+              onOpenProgression={() => {
+                setProgressionActionMessage('')
+                setIsProgressionOpen(true)
+              }}
+              onOpenShop={() => {
+                setProfileActionMessage('')
+                setIsPointShopOpen(true)
+              }}
+              onOpenCustomization={() => {
+                setProfileActionMessage('')
+                setIsSettingsOpen(true)
+              }}
             />
           ) : (
             <StatsDashboard
@@ -1343,23 +1245,23 @@ function App() {
                 What&apos;s new in {appVersion}
               </p>
               <h2 id="changelog-modal-title" className="mt-2 text-3xl font-bold">
-                Choose your path
+                Your new Profile hub
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Turn earned points into XP, unlock themed titles, and collect badges as you build your own Waypoint identity.
+                Your identity, progression, achievements, rewards, and customization now have a dedicated home.
               </p>
 
               <div className="mt-6 space-y-3">
                 <article className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-4">
-                  <h3 className="font-bold text-cyan-100">Five progression paths</h3>
+                  <h3 className="font-bold text-cyan-100">A dedicated Profile dashboard</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Explore Sci-Fi, Fantasy, Arcane, Western, or Cyberpunk, preserve completed paths, and advance through five distinct levels in each.
+                    View your avatar, equipped title, points, task history, badges, completed paths, and active progression from one place.
                   </p>
                 </article>
                 <article className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
-                  <h3 className="font-bold text-amber-100">Organized Markdown notes</h3>
+                  <h3 className="font-bold text-amber-100">Rewards and customization</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    File notes into folders, move them when needed, and use Markdown for headings, lists, links, tables, code, and richer reference material.
+                    Open the Point Shop, equip earned cosmetics, change themes, and manage progression paths without crowding the Tasks dashboard.
                   </p>
                 </article>
                 <article className="rounded-lg border border-cyan-300/20 bg-white/[0.04] p-4">

@@ -1,5 +1,5 @@
 export type AuthMode = 'login' | 'signup'
-export type ActiveDashboard = 'tasks' | 'groups' | 'calendar' | 'notes' | 'weekly-report' | 'stats'
+export type ActiveDashboard = 'tasks' | 'groups' | 'calendar' | 'notes' | 'weekly-report' | 'stats' | 'profile'
 export type TaskCompletionFilter = 'all' | 'incomplete' | 'completed'
 export type Colorway = 'midnight' | 'forest' | 'violet' | 'sunset' | 'graphite'
 

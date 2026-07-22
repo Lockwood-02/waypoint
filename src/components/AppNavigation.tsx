@@ -1,8 +1,12 @@
+import { useEffect, useRef, useState } from 'react'
 import type { ActiveDashboard } from '../types/app'
 import { appVersion } from '../config/appConfig'
 
 type AppNavigationProps = {
   activeDashboard: ActiveDashboard
+  avatarUrl: string | null
+  avatarFrameClass: string
+  displayName: string
   onDashboardChange: (dashboard: ActiveDashboard) => void
   onOpenChangelog: () => void
   onOpenSettings: () => void
@@ -18,7 +22,26 @@ const dashboardLinks: { id: ActiveDashboard; label: string }[] = [
   { id: 'stats', label: 'Stats' },
 ]
 
-export function AppNavigation({ activeDashboard, onDashboardChange, onOpenChangelog, onOpenSettings, onSignOut }: AppNavigationProps) {
+export function AppNavigation({ activeDashboard, avatarUrl, avatarFrameClass, displayName, onDashboardChange, onOpenChangelog, onOpenSettings, onSignOut }: AppNavigationProps) {
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false)
+  const accountMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isAccountMenuOpen) return
+    const closeOnOutsideClick = (event: MouseEvent) => {
+      if (!accountMenuRef.current?.contains(event.target as Node)) setIsAccountMenuOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsAccountMenuOpen(false)
+    }
+    document.addEventListener('mousedown', closeOnOutsideClick)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsideClick)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isAccountMenuOpen])
+
   return (
     <nav className="flex flex-wrap items-center justify-between gap-4">
       <div>
@@ -33,7 +56,7 @@ export function AppNavigation({ activeDashboard, onDashboardChange, onOpenChange
             {appVersion}
           </button>
         </div>
-        <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-2">
+        <div className="mt-2 flex min-h-9 flex-wrap items-end gap-x-4 gap-y-2">
           {dashboardLinks.map((link) => (
             <button
               key={link.id}
@@ -46,14 +69,29 @@ export function AppNavigation({ activeDashboard, onDashboardChange, onOpenChange
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={onOpenSettings} aria-label="Open settings" title="Settings" className="flex h-9 w-9 items-center justify-center rounded-md border border-white/15 text-slate-300 transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.6 3.4 10 2h4l.4 1.4a2 2 0 0 0 2.8 1.2l1.3-.7 2 3.5-1.1.9a2 2 0 0 0 0 3.4l1.1.9-2 3.5-1.3-.7a2 2 0 0 0-2.8 1.2L14 18h-4l-.4-1.4a2 2 0 0 0-2.8-1.2l-1.3.7-2-3.5 1.1-.9a2 2 0 0 0 0-3.4l-1.1-.9 2-3.5 1.3.7a2 2 0 0 0 2.8-1.2Z" />
-            <circle cx="12" cy="10" r="2.5" />
-          </svg>
+      <div ref={accountMenuRef} className="relative self-start">
+        <button
+          type="button"
+          aria-label="Open account menu"
+          aria-haspopup="menu"
+          aria-expanded={isAccountMenuOpen}
+          onClick={() => setIsAccountMenuOpen((current) => !current)}
+          className={`flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border-2 bg-slate-900 font-bold text-cyan-100 shadow-lg transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-cyan-300 focus:ring-offset-2 focus:ring-offset-slate-950 ${avatarFrameClass}`}
+        >
+          {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : displayName.charAt(0).toUpperCase()}
         </button>
-        <button type="button" onClick={onSignOut} className="rounded-md border border-white/15 px-4 py-2 text-sm font-semibold text-white transition hover:border-cyan-300 hover:text-cyan-200 focus:outline-none focus:ring-2 focus:ring-cyan-300">Sign out</button>
+        {isAccountMenuOpen ? (
+          <div role="menu" className="absolute right-0 z-40 mt-3 w-56 overflow-hidden rounded-lg border border-white/10 bg-slate-950 p-2 shadow-2xl shadow-black/50">
+            <div className="border-b border-white/10 px-3 py-2">
+              <p className="truncate text-sm font-bold text-white">{displayName}</p>
+              <p className="mt-0.5 text-xs text-slate-400">Waypoint account</p>
+            </div>
+            <button type="button" role="menuitem" onClick={() => { onDashboardChange('profile'); setIsAccountMenuOpen(false) }} className={`mt-2 w-full rounded-md px-3 py-2 text-left text-sm font-semibold transition hover:bg-white/[0.07] hover:text-cyan-100 ${activeDashboard === 'profile' ? 'bg-cyan-300/10 text-cyan-200' : 'text-slate-200'}`}>Profile</button>
+            <button type="button" role="menuitem" onClick={() => { onOpenSettings(); setIsAccountMenuOpen(false) }} className="w-full rounded-md px-3 py-2 text-left text-sm font-semibold text-slate-200 transition hover:bg-white/[0.07] hover:text-cyan-100">Settings</button>
+            <div className="my-2 border-t border-white/10" />
+            <button type="button" role="menuitem" onClick={() => { setIsAccountMenuOpen(false); onSignOut() }} className="w-full rounded-md px-3 py-2 text-left text-sm font-semibold text-rose-200 transition hover:bg-rose-300/10 hover:text-rose-100">Sign out</button>
+          </div>
+        ) : null}
       </div>
     </nav>
   )

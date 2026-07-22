@@ -31,7 +31,7 @@ export type XpBundle = {
   xp: number
 }
 
-const levelThresholds = [0, 100, 300, 600, 1000]
+const levelThresholds = [0, 500, 1500, 3000, 5000]
 
 function levels(pathId: ProgressionPathId, titles: string[]): ProgressionLevel[] {
   return titles.map((title, index) => ({
@@ -51,9 +51,9 @@ export const progressionPaths: ProgressionPath[] = [
     barClass: 'from-cyan-300 to-sky-400',
     levels: levels('sci-fi', ['Cadet', 'Starfinder', 'Void Runner', 'Vanguard', 'Galactic Legend']),
     badges: [
-      { id: 'first-launch', label: 'First Launch', description: 'Reach 100 XP.', requiredXp: 100 },
-      { id: 'deep-space', label: 'Deep Space', description: 'Reach 600 XP.', requiredXp: 600 },
-      { id: 'supernova', label: 'Supernova', description: 'Master the Sci-Fi path.', requiredXp: 1000 },
+      { id: 'first-launch', label: 'First Launch', description: 'Reach 500 XP.', requiredXp: 500 },
+      { id: 'deep-space', label: 'Deep Space', description: 'Reach 3,000 XP.', requiredXp: 3000 },
+      { id: 'supernova', label: 'Supernova', description: 'Master the Sci-Fi path.', requiredXp: 5000 },
     ],
   },
   {
@@ -64,9 +64,9 @@ export const progressionPaths: ProgressionPath[] = [
     barClass: 'from-emerald-300 to-lime-300',
     levels: levels('fantasy', ['Wanderer', 'Squire', 'Knight Errant', 'Dragon Warden', 'Realm Legend']),
     badges: [
-      { id: 'quest-begun', label: 'Quest Begun', description: 'Reach 100 XP.', requiredXp: 100 },
-      { id: 'dragon-mark', label: 'Dragon Mark', description: 'Reach 600 XP.', requiredXp: 600 },
-      { id: 'crowned', label: 'Crowned', description: 'Master the Fantasy path.', requiredXp: 1000 },
+      { id: 'quest-begun', label: 'Quest Begun', description: 'Reach 500 XP.', requiredXp: 500 },
+      { id: 'dragon-mark', label: 'Dragon Mark', description: 'Reach 3,000 XP.', requiredXp: 3000 },
+      { id: 'crowned', label: 'Crowned', description: 'Master the Fantasy path.', requiredXp: 5000 },
     ],
   },
   {
@@ -77,9 +77,9 @@ export const progressionPaths: ProgressionPath[] = [
     barClass: 'from-violet-300 to-fuchsia-300',
     levels: levels('arcane', ['Initiate', 'Spellweaver', 'Arcanist', 'Archmage', 'Ascendant']),
     badges: [
-      { id: 'first-sigil', label: 'First Sigil', description: 'Reach 100 XP.', requiredXp: 100 },
-      { id: 'grand-grimoire', label: 'Grand Grimoire', description: 'Reach 600 XP.', requiredXp: 600 },
-      { id: 'awakened', label: 'Awakened', description: 'Master the Arcane path.', requiredXp: 1000 },
+      { id: 'first-sigil', label: 'First Sigil', description: 'Reach 500 XP.', requiredXp: 500 },
+      { id: 'grand-grimoire', label: 'Grand Grimoire', description: 'Reach 3,000 XP.', requiredXp: 3000 },
+      { id: 'awakened', label: 'Awakened', description: 'Master the Arcane path.', requiredXp: 5000 },
     ],
   },
   {
@@ -90,9 +90,9 @@ export const progressionPaths: ProgressionPath[] = [
     barClass: 'from-amber-300 to-orange-400',
     levels: levels('western', ['Drifter', 'Trailhand', 'Gunslinger', 'Frontier Marshal', 'Legend of the West']),
     badges: [
-      { id: 'first-trail', label: 'First Trail', description: 'Reach 100 XP.', requiredXp: 100 },
-      { id: 'high-noon', label: 'High Noon', description: 'Reach 600 XP.', requiredXp: 600 },
-      { id: 'frontier-legend', label: 'Frontier Legend', description: 'Master the Western path.', requiredXp: 1000 },
+      { id: 'first-trail', label: 'First Trail', description: 'Reach 500 XP.', requiredXp: 500 },
+      { id: 'high-noon', label: 'High Noon', description: 'Reach 3,000 XP.', requiredXp: 3000 },
+      { id: 'frontier-legend', label: 'Frontier Legend', description: 'Master the Western path.', requiredXp: 5000 },
     ],
   },
   {
@@ -103,9 +103,9 @@ export const progressionPaths: ProgressionPath[] = [
     barClass: 'from-fuchsia-400 to-cyan-300',
     levels: levels('cyberpunk', ['Runner', 'Street Samurai', 'Netrunner', 'Edgerunner', 'Night City Legend']),
     badges: [
-      { id: 'jacked-in', label: 'Jacked In', description: 'Reach 100 XP.', requiredXp: 100 },
-      { id: 'afterlife', label: 'Afterlife', description: 'Reach 600 XP.', requiredXp: 600 },
-      { id: 'city-legend', label: 'City Legend', description: 'Master the Cyberpunk path.', requiredXp: 1000 },
+      { id: 'jacked-in', label: 'Jacked In', description: 'Reach 500 XP.', requiredXp: 500 },
+      { id: 'afterlife', label: 'Afterlife', description: 'Reach 3,000 XP.', requiredXp: 3000 },
+      { id: 'city-legend', label: 'City Legend', description: 'Master the Cyberpunk path.', requiredXp: 5000 },
     ],
   },
 ]
