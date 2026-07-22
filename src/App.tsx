@@ -342,8 +342,6 @@ function App() {
     () =>
       user
         ? [
-            ['Display name', profile?.display_name ?? 'Player'],
-            ['Email', user.email ?? 'Not provided'],
             ['Total points', String(profile?.total_points ?? 0)],
             ['Open tasks', String(tasks.filter((task) => task.status !== 'Completed').length)],
             ['Completed tasks', String(tasks.filter((task) => task.status === 'Completed').length)],
@@ -1058,7 +1056,17 @@ function App() {
                     Profile could not be loaded: {profileError}
                   </p>
                 ) : null}
-                <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+                <div className="mt-5">
+                  <ProgressionSummary
+                    progression={progression}
+                    isLoading={isLoadingProgression}
+                    onOpen={() => {
+                      setProgressionActionMessage('')
+                      setIsProgressionOpen(true)
+                    }}
+                  />
+                </div>
+                <dl className="mt-5 grid grid-cols-3 gap-3">
                   {userRows.map(([label, value]) => (
                     <div key={label}>
                       <dt className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -1105,14 +1113,6 @@ function App() {
                   </span>
                 </button>
               </div>
-              <ProgressionSummary
-                progression={progression}
-                isLoading={isLoadingProgression}
-                onOpen={() => {
-                  setProgressionActionMessage('')
-                  setIsProgressionOpen(true)
-                }}
-              />
             </aside>
 
             <section className="flex max-h-[36rem] min-h-0 flex-col rounded-lg border border-white/10 bg-white/[0.06] p-6 lg:max-h-[calc(100vh-12rem)]">
