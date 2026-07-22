@@ -33,6 +33,23 @@ import { supabase } from './lib/supabaseClient'
 import { AppNavigation } from './components/AppNavigation'
 import { SettingsModal } from './components/SettingsModal'
 import { PointShopModal } from './components/PointShopModal'
+import { ProgressionModal, ProgressionSummary } from './features/progression/ProgressionPanel'
+import {
+  equipProgressionTitle,
+  getCompletedProgressionPaths,
+  getProfileProgression,
+  purchaseXpBundle,
+  chooseProgressionPath,
+  switchProgressionPath,
+  type CompletedProgressionPath,
+  type ProfileProgression,
+} from './features/progression/progressionService'
+import {
+  getProgressionPath,
+  getProgressionTitle,
+  type ProgressionPathId,
+  type XpBundle,
+} from './features/progression/progressionConfig'
 import { TaskDueIndicator } from './components/TaskDueIndicator'
 import { clampTaskPoints, MAX_TASK_POINTS, MIN_TASK_POINTS } from './lib/pointEconomy'
 import { appVersion, changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
@@ -67,6 +84,12 @@ function App() {
   const [profileActionMessage, setProfileActionMessage] = useState('')
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
   const [ownedShopItemIds, setOwnedShopItemIds] = useState<string[]>([])
+  const [progression, setProgression] = useState<ProfileProgression | null>(null)
+  const [completedProgressionPaths, setCompletedProgressionPaths] = useState<CompletedProgressionPath[]>([])
+  const [isLoadingProgression, setIsLoadingProgression] = useState(false)
+  const [isProgressionOpen, setIsProgressionOpen] = useState(false)
+  const [isUpdatingProgression, setIsUpdatingProgression] = useState(false)
+  const [progressionActionMessage, setProgressionActionMessage] = useState('')
   const [activeDashboard, setActiveDashboard] =
     useState<ActiveDashboard>('tasks')
   const [isManageTagsOpen, setIsManageTagsOpen] = useState(false)
@@ -94,6 +117,12 @@ function App() {
     setProfileActionMessage('')
     setIsUpdatingProfile(false)
     setOwnedShopItemIds([])
+    setProgression(null)
+    setCompletedProgressionPaths([])
+    setIsLoadingProgression(false)
+    setIsProgressionOpen(false)
+    setIsUpdatingProgression(false)
+    setProgressionActionMessage('')
     setActiveDashboard('tasks')
     setIsManageTagsOpen(false)
     setTagActionMessage('')
@@ -210,6 +239,28 @@ function App() {
     return () => {
       isMounted = false
     }
+  }, [user])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadProgression() {
+      if (!user) return
+      setIsLoadingProgression(true)
+      const [progressionResponse, completedResponse] = await Promise.all([
+        getProfileProgression(user.id),
+        getCompletedProgressionPaths(user.id),
+      ])
+      if (!isMounted) return
+      setProgression(progressionResponse.data)
+      setCompletedProgressionPaths(completedResponse.data ?? [])
+      const error = progressionResponse.error ?? completedResponse.error
+      if (error) setProgressionActionMessage(error.message)
+      setIsLoadingProgression(false)
+    }
+
+    void loadProgression()
+    return () => { isMounted = false }
   }, [user])
 
   useEffect(() => {
@@ -384,6 +435,15 @@ function App() {
     }
   }, [profile?.selected_name_color])
 
+  const progressionPath = useMemo(
+    () => getProgressionPath(progression?.path_id),
+    [progression?.path_id],
+  )
+  const equippedProgressionTitle = useMemo(
+    () => getProgressionTitle(progression?.equipped_title_id),
+    [progression?.equipped_title_id],
+  )
+
   async function refreshTasks() {
     const { data, error } = await getTasks()
     setTasks(data ?? [])
@@ -536,6 +596,70 @@ function App() {
     }
 
     setIsUpdatingProfile(false)
+  }
+
+  async function handleChooseProgressionPath(pathId: ProgressionPathId) {
+    setIsUpdatingProgression(true)
+    setProgressionActionMessage('')
+    const { data, error } = await chooseProgressionPath(pathId)
+    if (error) setProgressionActionMessage(error.message)
+    else if (data) {
+      setProgression(data)
+      setProgressionActionMessage('Your first path is active. Your progression begins now.')
+    }
+    setIsUpdatingProgression(false)
+  }
+
+  async function handleBuyXpBundle(bundle: XpBundle) {
+    if (!profile || !progression) return
+    setIsUpdatingProgression(true)
+    setProgressionActionMessage('')
+    const { data, error } = await purchaseXpBundle(bundle.id)
+    if (error) setProgressionActionMessage(error.message)
+    else if (data) {
+      setProfile((current) => current ? { ...current, total_points: data.total_points } : current)
+      setProgression((current) => current ? { ...current, xp: data.xp, updated_at: new Date().toISOString() } : current)
+      setProgressionActionMessage(`${bundle.name} purchased. You gained ${bundle.xp} XP.`)
+      if (user) {
+        const completedResponse = await getCompletedProgressionPaths(user.id)
+        if (!completedResponse.error) setCompletedProgressionPaths(completedResponse.data ?? [])
+      }
+    }
+    setIsUpdatingProgression(false)
+  }
+
+  async function handleEquipProgressionTitle(titleId: string) {
+    setIsUpdatingProgression(true)
+    setProgressionActionMessage('')
+    const { data, error } = await equipProgressionTitle(titleId)
+    if (error) setProgressionActionMessage(error.message)
+    else if (data) {
+      setProgression(data)
+      const title = progressionPath?.levels.find((level) => level.titleId === titleId)?.title
+      setProgressionActionMessage(`${title ?? 'Title'} equipped.`)
+    }
+    setIsUpdatingProgression(false)
+  }
+
+  async function handleSwitchProgressionPath(pathId: ProgressionPathId) {
+    if (!user || !progression) return
+    const previousPath = getProgressionPath(progression.path_id)
+    const preserved = progression.xp >= 1000
+    setIsUpdatingProgression(true)
+    setProgressionActionMessage('')
+    const { data, error } = await switchProgressionPath(pathId)
+    if (error) setProgressionActionMessage(error.message)
+    else if (data) {
+      setProgression(data)
+      const completedResponse = await getCompletedProgressionPaths(user.id)
+      if (!completedResponse.error) setCompletedProgressionPaths(completedResponse.data ?? [])
+      setProgressionActionMessage(
+        preserved
+          ? `${previousPath?.name ?? 'Your completed path'} was preserved. Your new path is active.`
+          : `Path changed. Progress from ${previousPath?.name ?? 'the unfinished path'} was reset.`,
+      )
+    }
+    setIsUpdatingProgression(false)
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -922,6 +1046,11 @@ function App() {
                     >
                       {profile?.display_name ?? 'Player'}
                     </h2>
+                    {equippedProgressionTitle ? (
+                      <p className={`mt-1 text-sm font-semibold ${equippedProgressionTitle.path.accentClass}`}>
+                        {equippedProgressionTitle.level.title}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 {profileError ? (
@@ -976,6 +1105,14 @@ function App() {
                   </span>
                 </button>
               </div>
+              <ProgressionSummary
+                progression={progression}
+                isLoading={isLoadingProgression}
+                onOpen={() => {
+                  setProgressionActionMessage('')
+                  setIsProgressionOpen(true)
+                }}
+              />
             </aside>
 
             <section className="flex max-h-[36rem] min-h-0 flex-col rounded-lg border border-white/10 bg-white/[0.06] p-6 lg:max-h-[calc(100vh-12rem)]">
@@ -1206,17 +1343,17 @@ function App() {
                 What&apos;s new in {appVersion}
               </p>
               <h2 id="changelog-modal-title" className="mt-2 text-3xl font-bold">
-                Business groups have arrived
+                Choose your path
               </h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Create structured workspaces where managers and task creators control completion while employees manage the steps assigned to them.
+                Turn earned points into XP, unlock themed titles, and collect badges as you build your own Waypoint identity.
               </p>
 
               <div className="mt-6 space-y-3">
                 <article className="rounded-lg border border-cyan-300/30 bg-cyan-300/10 p-4">
-                  <h3 className="font-bold text-cyan-100">Calendar and due dates</h3>
+                  <h3 className="font-bold text-cyan-100">Five progression paths</h3>
                   <p className="mt-1 text-sm leading-6 text-slate-200">
-                    Personal and group tasks with due dates now appear together on an interactive calendar with daily task details.
+                    Explore Sci-Fi, Fantasy, Arcane, Western, or Cyberpunk, preserve completed paths, and advance through five distinct levels in each.
                   </p>
                 </article>
                 <article className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4">
@@ -1482,6 +1619,21 @@ function App() {
               </form>
             </section>
           </div>
+        ) : null}
+
+        {isProgressionOpen && profile ? (
+          <ProgressionModal
+            profile={profile}
+            progression={progression}
+            completedPaths={completedProgressionPaths}
+            isUpdating={isUpdatingProgression}
+            message={progressionActionMessage}
+            onChoosePath={(pathId) => void handleChooseProgressionPath(pathId)}
+            onSwitchPath={(pathId) => void handleSwitchProgressionPath(pathId)}
+            onBuyBundle={(bundle) => void handleBuyXpBundle(bundle)}
+            onEquipTitle={(titleId) => void handleEquipProgressionTitle(titleId)}
+            onClose={() => setIsProgressionOpen(false)}
+          />
         ) : null}
 
         {isPointShopOpen && profile ? (
