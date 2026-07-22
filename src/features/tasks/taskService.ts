@@ -1,5 +1,6 @@
 import { clampTaskPoints } from '../../lib/pointEconomy'
 import { INPUT_LIMITS } from '../../lib/inputLimits'
+import { validateDueDate } from '../../lib/dueDateLimits'
 import { supabase } from '../../lib/supabaseClient'
 
 export type TaskStatus =
@@ -71,6 +72,8 @@ function validateTaskInput(input: CreateTaskInput) {
   if (input.steps.length > INPUT_LIMITS.taskStepCount) return new Error(`Tasks are limited to ${INPUT_LIMITS.taskStepCount} checklist steps.`)
   if (input.steps.some((step) => step.trim().length > INPUT_LIMITS.taskStepText)) return new Error(`Checklist steps are limited to ${INPUT_LIMITS.taskStepText} characters.`)
   if ((input.newTagName?.trim().length ?? 0) > INPUT_LIMITS.taskTagName) return new Error(`Task tags are limited to ${INPUT_LIMITS.taskTagName} characters.`)
+  const dueDateError = validateDueDate(input.dueDate)
+  if (dueDateError) return dueDateError
   return null
 }
 

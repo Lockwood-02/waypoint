@@ -54,6 +54,48 @@
   --color-slate-950: #111315;
 }
 
+/* User-entered content can contain URLs or other long strings without spaces.
+   Let those strings wrap inside every dashboard instead of widening cards,
+   modals, or the page itself. */
+[data-colorway] {
+  overflow-wrap: anywhere;
+}
+
+[data-colorway] :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  li,
+  a,
+  code,
+  blockquote,
+  figcaption,
+  dt,
+  dd,
+  th,
+  td
+) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+[data-colorway] :where(input, textarea) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-colorway] textarea,
+[data-colorway] pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* Keep destructive group-task actions consistent with the personal task modal. */
 [aria-labelledby="group-task-title"] button.border-rose-300\/50 {
   transition: border-color 150ms ease, color 150ms ease;

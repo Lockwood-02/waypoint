@@ -56,12 +56,15 @@ import {
   type XpBundle,
 } from './features/progression/progressionConfig'
 import { TaskDueIndicator } from './components/TaskDueIndicator'
+import { TrashIcon } from './components/TrashIcon'
 import { clampTaskPoints, MAX_TASK_POINTS, MIN_TASK_POINTS } from './lib/pointEconomy'
 import { INPUT_LIMITS } from './lib/inputLimits'
+import { formatDueDateBound, getDueDateBounds } from './lib/dueDateLimits'
 import { appVersion, changelogVersion, colorwayOptions, initialAuthState, initialTaskFormState, shopItems } from './config/appConfig'
 import type { ActiveDashboard, AuthMode, AuthState, Colorway, ShopItem, TaskCompletionFilter, TaskFormState } from './types/app'
 
 function App() {
+  const dueDateBounds = getDueDateBounds()
   const [authMode, setAuthMode] = useState<AuthMode>('login')
   const [formState, setFormState] = useState<AuthState>(initialAuthState)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -1432,6 +1435,8 @@ function App() {
                   </span>
                   <input
                     type="date"
+                    min={dueDateBounds.min}
+                    max={dueDateBounds.max}
                     value={taskForm.dueDate}
                     onChange={(event) =>
                       setTaskForm((current) => ({
@@ -1441,6 +1446,9 @@ function App() {
                     }
                     className="mt-2 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-3 text-white outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-300/30"
                   />
+                  <span className="mt-1 block text-xs text-slate-400">
+                    Choose between {formatDueDateBound(dueDateBounds.min)} and {formatDueDateBound(dueDateBounds.max)}.
+                  </span>
                 </label>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -1517,9 +1525,11 @@ function App() {
                         <button
                           type="button"
                           onClick={() => removeStepDraft(index)}
-                          className="rounded-md border border-white/15 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-rose-300 hover:text-rose-100"
+                          aria-label={`Remove step ${index + 1}`}
+                          title="Remove step"
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-white/15 text-slate-200 transition hover:border-rose-300 hover:bg-rose-300/10 hover:text-rose-100 focus:outline-none focus:ring-2 focus:ring-rose-300"
                         >
-                          Remove
+                          <TrashIcon />
                         </button>
                       </div>
                     ))}
