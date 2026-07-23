@@ -109,6 +109,14 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [colorway, setColorway] = useState<Colorway>('midnight')
 
+  useEffect(() => {
+    document.documentElement.dataset.colorway = user ? colorway : 'midnight'
+
+    return () => {
+      delete document.documentElement.dataset.colorway
+    }
+  }, [colorway, user])
+
   function clearSignedInState() {
     setProfile(null)
     setProfileError('')
